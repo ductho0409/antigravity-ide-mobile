@@ -1,0 +1,588 @@
+/* ============================================
+ * Chat — Header, Window Dropdown, Input
+ * ============================================ */
+
+/* ── Chat Header ── */
+.chat-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.35) 0%, rgba(0, 0, 0, 0.18) 100%);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    gap: 6px;
+    min-height: 42px;
+    z-index: 10;
+    position: relative;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+/* ── Window Selector Button ── */
+.chat-header-window {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 10px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    overflow: hidden;
+    flex: 1;
+    min-width: 0;
+    letter-spacing: -0.01em;
+}
+
+.chat-header-window:hover {
+    background: rgba(255, 255, 255, 0.07);
+    border-color: var(--border-hover);
+}
+
+.chat-header-window:active {
+    transform: scale(0.98);
+}
+
+/* ── Status Dot ── */
+.window-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--success, #22c55e);
+    flex-shrink: 0;
+    box-shadow: 0 0 6px rgba(34, 197, 94, 0.4);
+    transition: all 0.3s ease;
+}
+
+.window-dot.disconnected {
+    background: var(--error, #ef4444);
+    box-shadow: 0 0 6px rgba(239, 68, 68, 0.4);
+    animation: dotPulse 2s ease-in-out infinite;
+}
+
+@keyframes dotPulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.4;
+    }
+}
+
+/* ── Window Name ── */
+.window-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    text-align: left;
+}
+
+/* ── Dropdown Arrow ── */
+.dropdown-arrow {
+    font-size: 10px;
+    opacity: 0.5;
+    transition: transform 0.2s ease;
+    flex-shrink: 0;
+}
+
+/* ── Header Action Buttons ── */
+.chat-header-actions {
+    display: flex;
+    gap: 3px;
+    flex-shrink: 0;
+}
+
+.chat-header-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 7px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.chat-header-btn:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: var(--border);
+    color: var(--text-secondary);
+}
+
+.chat-header-btn:active {
+    transform: scale(0.92);
+}
+
+.chat-header-btn.accent {
+    color: var(--accent-primary);
+}
+
+.chat-header-btn.accent:hover {
+    background: rgba(14, 165, 233, 0.12);
+    border-color: rgba(14, 165, 233, 0.2);
+    color: var(--accent-primary);
+}
+
+/* ── Window Dropdown ── */
+.window-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 8px;
+    right: 8px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow:
+        0 4px 24px rgba(0, 0, 0, 0.4),
+        0 1px 3px rgba(0, 0, 0, 0.2);
+    z-index: 100;
+    overflow: hidden;
+    animation: dropdownSlide 0.18s ease-out;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+}
+
+@keyframes dropdownSlide {
+    from {
+        opacity: 0;
+        transform: translateY(-6px) scale(0.98);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Dropdown section label */
+.wd-section-label {
+    padding: 8px 12px 4px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+/* ── Dropdown Items ── */
+.window-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    position: relative;
+    margin: 0 4px;
+    border-radius: 6px;
+}
+
+.window-dropdown-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.window-dropdown-item.active {
+    background: rgba(14, 165, 233, 0.08);
+}
+
+.window-dropdown-item.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 2px;
+    height: 60%;
+    background: var(--accent-primary);
+    border-radius: 1px;
+}
+
+/* ── Dropdown Dot (per-item) ── */
+.window-dropdown-item .wd-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    transition: all 0.2s;
+}
+
+.window-dropdown-item.active .wd-dot {
+    background: var(--success);
+    box-shadow: 0 0 6px rgba(34, 197, 94, 0.45);
+}
+
+.window-dropdown-item:not(.active) .wd-dot {
+    background: var(--text-muted);
+    opacity: 0.35;
+}
+
+/* ── Dropdown Info ── */
+.wd-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.wd-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    line-height: 1.3;
+}
+
+.wd-port {
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.3;
+}
+
+/* ── Dropdown Active Check ── */
+.wd-check {
+    color: var(--accent-primary);
+    opacity: 0;
+    transition: opacity 0.15s;
+    flex-shrink: 0;
+}
+
+.window-dropdown-item.active .wd-check {
+    opacity: 1;
+}
+
+/* ── Dropdown Actions ── */
+.window-dropdown-actions {
+    display: flex;
+    gap: 1px;
+    border-top: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.wd-action-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 8px 10px;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    position: relative;
+}
+
+.wd-action-btn::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 25%;
+    height: 50%;
+    width: 1px;
+    background: var(--border);
+}
+
+.wd-action-btn:last-child::after {
+    display: none;
+}
+
+.wd-action-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--accent-primary);
+}
+
+.wd-action-btn:active {
+    transform: scale(0.97);
+}
+
+.wd-action-btn svg {
+    width: 13px;
+    height: 13px;
+    flex-shrink: 0;
+}
+
+/* ── Launch Picker Header ── */
+.wd-picker-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+.wd-picker-header svg {
+    width: 16px;
+    height: 16px;
+    color: var(--accent-primary);
+    flex-shrink: 0;
+}
+
+.wd-picker-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.wd-picker-list {
+    max-height: 50vh;
+    overflow-y: auto;
+    padding: 4px 0;
+}
+
+.wd-picker-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    margin: 0 4px;
+    border-radius: 6px;
+}
+
+.wd-picker-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.wd-picker-item.featured {
+    border-left: 2px solid var(--accent-primary);
+    margin-left: 4px;
+    padding-left: 10px;
+}
+
+.wd-picker-icon {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+.wd-picker-icon svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* ── Empty State ── */
+.wd-empty {
+    padding: 16px 12px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.wd-empty svg {
+    width: 20px;
+    height: 20px;
+    margin: 0 auto 6px;
+    opacity: 0.4;
+}
+
+/* ── Reduced Motion ── */
+@media (prefers-reduced-motion: reduce) {
+    .window-dropdown {
+        animation: none;
+    }
+
+    .window-dot.disconnected {
+        animation: none;
+    }
+
+    .chat-header-window,
+    .chat-header-btn,
+    .window-dropdown-item,
+    .wd-action-btn {
+        transition: none;
+    }
+}
+
+/* ============================================
+ * Chat Input Area
+ * ============================================ */
+.chat-input-area {
+    padding: 12px 16px;
+    background: rgba(0, 0, 0, 0.3);
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.chat-input-wrapper {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.chat-input {
+    flex: 1;
+    padding: 14px 18px;
+    background: var(--bg-glass);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    color: var(--text-primary);
+    font-size: 15px;
+    outline: none;
+    transition: all 0.3s;
+}
+
+.chat-input::placeholder {
+    color: var(--text-muted);
+}
+
+.chat-input:focus {
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.chat-send {
+    width: 48px;
+    min-width: 48px;
+    height: 48px;
+    background: var(--accent-primary);
+    border: none;
+    border-radius: 50%;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    box-shadow: 0 4px 16px var(--accent-glow);
+    flex-shrink: 0;
+}
+
+.chat-send:hover {
+    transform: scale(1.05);
+}
+
+.chat-send:active {
+    transform: scale(0.95);
+}
+
+/* ============================================
+ * Mobile Code Block Copy Button
+ * ============================================ */
+.copy-code-btn {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    color: var(--text-secondary, #999);
+    font-size: 14px;
+    cursor: pointer;
+    opacity: 0.6;
+    transition: all 0.2s ease;
+    z-index: 5;
+    padding: 0;
+    line-height: 1;
+}
+
+.copy-code-btn:hover {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.14);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.copy-code-btn:active {
+    transform: scale(0.9);
+}
+
+.copy-code-btn.copied {
+    opacity: 1;
+    color: var(--success, #22c55e);
+    border-color: rgba(34, 197, 94, 0.3);
+    background: rgba(34, 197, 94, 0.12);
+}
+
+/* ============================================
+ * Empty State — No active chat
+ * ============================================ */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 48px 24px;
+    min-height: 50vh;
+    gap: 12px;
+    color: var(--text-secondary, #888);
+    animation: emptyFadeIn 0.4s ease;
+}
+
+@keyframes emptyFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.empty-state-icon {
+    margin-bottom: 8px;
+    color: var(--text-muted, #666);
+}
+
+.empty-state-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary, #cdd6f4);
+}
+
+.empty-state-desc {
+    margin: 0;
+    font-size: 14px;
+    color: var(--text-muted, #6c7086);
+    max-width: 260px;
+}
+
+.empty-state-tips {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.empty-state-tip {
+    padding: 8px 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    font-size: 13px;
+    color: var(--text-secondary, #999);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}

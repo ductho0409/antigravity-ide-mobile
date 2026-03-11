@@ -1,0 +1,257 @@
+/* ============================================
+ * Layout — Global resets, topbar mode, content offsets
+ * Sidebar component styles are in Tailwind (Sidebar.tsx)
+ * ============================================ */
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+    font-family: var(--font-sans);
+    background: var(--bg-dark);
+    color: var(--text-primary);
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    overscroll-behavior-y: contain;
+    -webkit-font-smoothing: antialiased;
+}
+
+body.no-scroll {
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+}
+
+/* Legacy background removed in favor of BackgroundVFX component */
+.bg-effects {
+    display: none;
+}
+
+/* ========== Top Bar Mode ========== */
+.topbar-mode .sidebar {
+    display: none !important;
+}
+
+#topbar {
+    display: none;
+}
+
+.topbar-mode #topbar {
+    display: flex;
+    position: fixed;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    height: 44px;
+    z-index: 1000;
+    align-items: center;
+    padding: 0 6px;
+    gap: 4px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 50%, rgba(255, 255, 255, 0.06) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-top-color: rgba(255, 255, 255, 0.2);
+    border-radius: 24px;
+    backdrop-filter: blur(40px) saturate(1.4);
+    -webkit-backdrop-filter: blur(40px) saturate(1.4);
+    box-shadow:
+        0 4px 24px rgba(0, 0, 0, 0.25),
+        0 1px 0 rgba(255, 255, 255, 0.1) inset,
+        0 -1px 0 rgba(0, 0, 0, 0.15) inset;
+}
+
+.topbar-nav {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.topbar-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 16px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.topbar-btn svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+.topbar-btn:hover {
+    background: var(--bg-glass);
+    color: var(--text-primary);
+}
+
+.topbar-btn.active {
+    background: var(--accent-primary);
+    color: white;
+    box-shadow: 0 2px 10px var(--accent-glow);
+}
+
+/* Content area in topbar mode */
+.topbar-mode .content {
+    margin-left: 0 !important;
+    padding-top: 0;
+}
+
+.topbar-mode .header {
+    display: none !important;
+}
+
+body.sidebar-expanded.topbar-mode .content,
+body.sidebar-expanded.topbar-mode .header {
+    margin-left: 0 !important;
+}
+
+.topbar-mode #chat-container,
+.topbar-mode #filesPanel,
+.topbar-mode #gitPanel,
+.topbar-mode #settingsPanel,
+.topbar-mode #assistPanel,
+.topbar-mode #streamPanel,
+.topbar-mode #terminal-container {
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding-top: 64px !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+}
+
+.topbar-mode .chat-container {
+    height: calc(100vh - 64px) !important;
+}
+
+.topbar-mode #filesPanel,
+.topbar-mode #gitPanel,
+.topbar-mode #settingsPanel,
+.topbar-mode #assistPanel {
+    animation: slideDown 0.25s ease;
+}
+
+.topbar-mode .file-viewer {
+    top: 60px !important;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-20px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Quick Actions Toggle (via admin panel) */
+.hide-quick-actions .quick-actions {
+    display: none !important;
+}
+
+/* Header */
+.header {
+    padding: 16px 20px;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    margin-left: var(--sidebar-collapsed);
+    transition: margin-left 0.25s ease;
+}
+
+body.sidebar-expanded .header {
+    margin-left: var(--sidebar-width);
+}
+
+/* Content area should offset for fixed sidebar */
+.content {
+    margin-left: var(--sidebar-collapsed);
+    transition: margin-left 0.25s ease;
+}
+
+body.sidebar-expanded .content {
+    margin-left: var(--sidebar-width);
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* ========== Bottom Tab Bar Mode ========== */
+.bottombar-mode .sidebar {
+    display: none !important;
+}
+
+.bottombar-mode #topbar {
+    display: none !important;
+}
+
+.bottombar-mode .content {
+    margin-left: 0 !important;
+    padding-top: 0;
+    padding-bottom: 72px;
+    /* space for bottom tab bar */
+}
+
+.bottombar-mode .header {
+    display: none !important;
+}
+
+.bottombar-mode #chat-container,
+.bottombar-mode #filesPanel,
+.bottombar-mode #gitPanel,
+.bottombar-mode #settingsPanel,
+.bottombar-mode #assistPanel,
+.bottombar-mode #streamPanel,
+.bottombar-mode #terminal-container {
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding-bottom: 72px !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+}
+
+.bottombar-mode .chat-container {
+    height: calc(100vh - 72px) !important;
+    height: calc(100dvh - 72px) !important;
+}
+
+.bottombar-mode .toast-container {
+    bottom: 84px;
+}
+
+body.sidebar-expanded.bottombar-mode .content,
+body.sidebar-expanded.bottombar-mode .header {
+    margin-left: 0 !important;
+}

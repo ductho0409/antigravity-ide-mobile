@@ -1,0 +1,467 @@
+/* ============================================
+ * Theme-specific component overrides
+ * ============================================ */
+
+/* ========== Command Center Theme ========== */
+/* Deep dark, green #00E599 brand, sharp edges, tech/military aesthetic */
+.command-theme .sidebar {
+    background: #060B10;
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.command-theme .sidebar-item.active {
+    color: #00E599;
+    background: rgba(0, 229, 153, 0.08);
+}
+
+.command-theme .sidebar-item.active::before {
+    content: '';
+    position: absolute;
+    left: -1px;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: #00E599;
+    box-shadow: 0 0 12px #00E599;
+}
+
+.command-theme .sidebar-footer {
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.command-theme .logo-icon {
+    background: #00E599 !important;
+}
+
+.command-theme .logo-text {
+    color: #ffffff !important;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+.command-theme .header {
+    background: rgba(6, 11, 16, 0.95);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(12px);
+}
+
+.command-theme .status-pill.connected {
+    background: rgba(0, 229, 153, 0.1);
+    border: 1px solid rgba(0, 229, 153, 0.3);
+    color: #00E599;
+}
+
+.command-theme .status-dot {
+    background: #00E599 !important;
+    box-shadow: 0 0 8px #00E599;
+}
+
+/* Cards: sharp edges, no rounded corners */
+.command-theme .card,
+.command-theme .screen-frame {
+    border-radius: 0;
+}
+
+.command-theme .tech-card,
+.command-theme .card {
+    border-color: rgba(255, 255, 255, 0.08);
+    background: #0A1017;
+}
+
+.command-theme .card:hover {
+    border-color: rgba(0, 229, 153, 0.3);
+    background: linear-gradient(180deg, #0A1017 0%, rgba(0, 229, 153, 0.04) 100%);
+}
+
+/* Toggle — rectangular, sharp, matching admin tech-toggle */
+.command-theme .toggle-switch input+.toggle-slider {
+    border-radius: 0;
+}
+
+.command-theme .toggle-switch input:checked+.toggle-slider {
+    background: rgba(0, 229, 153, 0.1) !important;
+    border-color: #00E599 !important;
+}
+
+.command-theme .toggle-switch input+.toggle-slider::before {
+    border-radius: 0;
+}
+
+.command-theme .toggle-switch input:checked+.toggle-slider::before {
+    background: #00E599 !important;
+}
+
+/* Chat */
+.command-theme .chat-container {
+    border-radius: 0;
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+.command-theme .chat-send {
+    background: #00E599 !important;
+    color: #000 !important;
+    border-radius: 0;
+}
+
+.command-theme .chat-input {
+    border-radius: 0;
+}
+
+.command-theme .chat-input:focus {
+    border-color: #00E599;
+    box-shadow: 0 0 0 2px rgba(0, 229, 153, 0.15);
+}
+
+/* Quick chips — brand-tinted */
+.command-theme .quick-chip {
+    border-radius: 0;
+    border-color: rgba(0, 229, 153, 0.2);
+    color: #94A3B8;
+}
+
+.command-theme .quick-chip:hover {
+    border-color: #00E599;
+    color: #00E599;
+    background: rgba(0, 229, 153, 0.08);
+}
+
+/* Settings */
+.command-theme .settings-title {
+    color: #00E599;
+    font-family: 'Space Grotesk', sans-serif;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+}
+
+.command-theme .setting-label h4 {
+    font-weight: 600;
+}
+
+.command-theme .setting-value {
+    background: rgba(0, 229, 153, 0.08);
+    color: #00E599;
+    border: 1px solid rgba(0, 229, 153, 0.15);
+    border-radius: 0;
+}
+
+/* Topbar — sharp */
+.command-theme #topbar {
+    border-radius: 0;
+    background: #0A1017;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.command-theme .topbar-btn {
+    border-radius: 0;
+    color: #94A3B8;
+}
+
+.command-theme .topbar-btn:hover {
+    color: #FFFFFF;
+}
+
+.command-theme .topbar-btn.active {
+    color: #00E599;
+    background: rgba(0, 229, 153, 0.08);
+}
+
+/* View switcher */
+.command-theme .view-switcher {
+    border-radius: 0;
+}
+
+.command-theme .view-btn {
+    border-radius: 0;
+}
+
+.command-theme .view-btn.active {
+    background: rgba(0, 229, 153, 0.1);
+    color: #00E599;
+    box-shadow: none;
+}
+
+/* Login */
+.command-theme .login-card {
+    border-radius: 0;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: #0A1017;
+}
+
+.command-theme .login-btn {
+    border-radius: 0;
+    background: #00E599 !important;
+    color: #000 !important;
+}
+
+.command-theme .login-logo svg {
+    stroke: #00E599;
+}
+
+.command-theme .login-title {
+    color: #FFFFFF;
+    font-family: 'Space Grotesk', sans-serif;
+}
+
+/* File viewer */
+.command-theme .file-viewer {
+    border-radius: 0;
+}
+
+.command-theme .files-panel {
+    border-radius: 0;
+    background: #060B10;
+}
+
+.command-theme .file-item:hover {
+    background: rgba(0, 229, 153, 0.06);
+}
+
+/* Buttons */
+.command-theme .btn-primary {
+    background: #00E599 !important;
+    color: #000 !important;
+    border-radius: 0;
+}
+
+/* Theme selector */
+.command-theme .theme-selector {
+    border-radius: 0;
+}
+
+.command-theme .theme-icon-btn {
+    border-radius: 0;
+}
+
+/* No decorative glow on non-interactive elements */
+.command-theme .bg-effects {
+    background: #060B10;
+}
+
+/* Quota */
+.command-theme .quota-refresh-btn {
+    border-radius: 0;
+    background: #00E599 !important;
+    color: #000 !important;
+}
+
+/* ========== Command Center Light Theme ========== */
+/* Light bg, green #00C880 brand, sharp edges — admin preview light variant */
+
+/* Share light-bg base with existing light/pastel themes */
+.command-light-theme .sidebar,
+.command-light-theme .header {
+    background: var(--bg-card);
+    border-color: var(--border);
+}
+
+.command-light-theme .sidebar {
+    box-shadow: 2px 0 12px rgba(0, 0, 0, 0.06);
+}
+
+.command-light-theme .sidebar-item.active {
+    color: #00C880;
+    background: rgba(0, 200, 128, 0.08);
+}
+
+.command-light-theme .sidebar-item.active::before {
+    content: '';
+    position: absolute;
+    left: -1px;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: #00C880;
+    box-shadow: 0 0 8px rgba(0, 200, 128, 0.4);
+}
+
+.command-light-theme .sidebar-footer {
+    border-top: 1px solid var(--border);
+}
+
+.command-light-theme .logo-icon {
+    background: #00C880 !important;
+}
+
+.command-light-theme .logo-text {
+    color: #0F172A !important;
+    font-weight: 700;
+}
+
+.command-light-theme .status-pill.connected {
+    background: rgba(0, 200, 128, 0.1);
+    border: 1px solid rgba(0, 200, 128, 0.3);
+    color: #00C880;
+}
+
+.command-light-theme .status-dot {
+    background: #00C880 !important;
+    box-shadow: 0 0 6px rgba(0, 200, 128, 0.5);
+}
+
+/* Cards: sharp edges */
+.command-light-theme .card,
+.command-light-theme .screen-frame {
+    border-radius: 0;
+}
+
+.command-light-theme .card {
+    border-color: var(--border);
+    background: #FFFFFF;
+}
+
+.command-light-theme .card:hover {
+    border-color: rgba(0, 200, 128, 0.3);
+    background: linear-gradient(180deg, #FFFFFF 0%, rgba(0, 200, 128, 0.04) 100%);
+}
+
+/* Toggle */
+.command-light-theme .toggle-switch input+.toggle-slider {
+    border-radius: 0;
+}
+
+.command-light-theme .toggle-switch input:checked+.toggle-slider {
+    background: rgba(0, 200, 128, 0.1) !important;
+    border-color: #00C880 !important;
+}
+
+.command-light-theme .toggle-switch input+.toggle-slider::before {
+    border-radius: 0;
+}
+
+.command-light-theme .toggle-switch input:checked+.toggle-slider::before {
+    background: #00C880 !important;
+}
+
+/* Chat */
+.command-light-theme .chat-container {
+    border-radius: 0;
+}
+
+.command-light-theme .chat-send {
+    background: #00C880 !important;
+    color: #fff !important;
+    border-radius: 0;
+}
+
+.command-light-theme .chat-input {
+    border-radius: 0;
+}
+
+.command-light-theme .chat-input:focus {
+    border-color: #00C880;
+    box-shadow: 0 0 0 2px rgba(0, 200, 128, 0.15);
+}
+
+/* Quick chips */
+.command-light-theme .quick-chip {
+    border-radius: 0;
+    border-color: rgba(0, 200, 128, 0.2);
+    color: #475569;
+}
+
+.command-light-theme .quick-chip:hover {
+    border-color: #00C880;
+    color: #00C880;
+    background: rgba(0, 200, 128, 0.06);
+}
+
+/* Settings */
+.command-light-theme .settings-title {
+    color: #00C880;
+    font-family: 'Space Grotesk', sans-serif;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+}
+
+.command-light-theme .setting-value {
+    background: rgba(0, 200, 128, 0.06);
+    color: #00C880;
+    border: 1px solid rgba(0, 200, 128, 0.12);
+    border-radius: 0;
+}
+
+/* Settings & Assist panels */
+.command-light-theme #settingsPanel,
+.command-light-theme #assistPanel {
+    background: var(--bg-dark);
+}
+
+.command-light-theme .chat-input-area {
+    background: rgba(0, 0, 0, 0.02);
+}
+
+/* Topbar */
+.command-light-theme #topbar {
+    border-radius: 0;
+    background: #FFFFFF;
+    border: 1px solid var(--border);
+}
+
+.command-light-theme .topbar-btn {
+    border-radius: 0;
+}
+
+.command-light-theme .topbar-btn.active {
+    color: #00C880;
+    background: rgba(0, 200, 128, 0.08);
+}
+
+/* View switcher */
+.command-light-theme .view-switcher {
+    border-radius: 0;
+}
+
+.command-light-theme .view-btn {
+    border-radius: 0;
+}
+
+.command-light-theme .view-btn.active {
+    background: rgba(0, 200, 128, 0.1);
+    color: #00C880;
+    box-shadow: none;
+}
+
+/* Login */
+.command-light-theme .login-card {
+    border-radius: 0;
+    border: 1px solid var(--border);
+    background: #FFFFFF;
+}
+
+.command-light-theme .login-btn {
+    border-radius: 0;
+    background: #00C880 !important;
+    color: #fff !important;
+}
+
+.command-light-theme .login-logo svg {
+    stroke: #00C880;
+}
+
+/* Files */
+.command-light-theme .file-viewer,
+.command-light-theme .files-panel {
+    border-radius: 0;
+}
+
+.command-light-theme .file-item:hover {
+    background: rgba(0, 200, 128, 0.06);
+}
+
+/* Buttons */
+.command-light-theme .btn-primary {
+    background: #00C880 !important;
+    color: #fff !important;
+    border-radius: 0;
+}
+
+.command-light-theme .theme-selector,
+.command-light-theme .theme-icon-btn {
+    border-radius: 0;
+}
+
+.command-light-theme .quota-refresh-btn {
+    border-radius: 0;
+    background: #00C880 !important;
+    color: #fff !important;
+}

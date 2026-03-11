@@ -1,0 +1,16 @@
+/* Mobile Frontend — CSS imports */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import 'tailwindcss';
+
+/* Override Tailwind preflight: keep SVG icons inline (Lucide renders inline SVGs) */
+svg {
+    display: inline-block;
+    vertical-align: middle;
+}
+
+/* Custom styles — loaded after Tailwind so they take precedence */
+@import './variables.css';
+@import './themes.css';
+@import './layout.css';
+@import './components.css';
+@import './chat.css';
