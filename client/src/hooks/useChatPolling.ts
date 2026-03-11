@@ -115,6 +115,10 @@ export function useChatPolling(
   const optRef = useRef(options);
   optRef.current = options;
 
+  // Anti-flicker: track rendered content length to reject stale/shorter snapshots
+  const lastRenderedLenRef = useRef(0);
+  const lastRenderedTimeRef = useRef(0);
+
   // ─── Core render function (shared by WS push + polling) ──────────
   const renderSnapshot = useCallback((data: ChatSnapshot) => {
     const container = containerRef.current;
@@ -123,7 +127,24 @@ export function useChatPolling(
 
     const hash = djb2Hash(data.html);
     if (hash === lastHashRef.current) return; // No change
+
+    // Anti-flicker guard: reject snapshots that are significantly shorter
+    // than current content (they're likely stale/intermediate DOM captures).
+    // Allow if: first render, or content grew, or it's been >15s since last render
+    // (handles genuine conversation resets like new chat / window switch).
+    const newLen = data.html.length;
+    const elapsed = Date.now() - lastRenderedTimeRef.current;
+    if (lastRenderedLenRef.current > 0 && elapsed < 15000) {
+      const ratio = newLen / lastRenderedLenRef.current;
+      if (ratio < 0.7) {
+        // Snapshot is <70% of current content — skip (likely stale)
+        return;
+      }
+    }
+
     lastHashRef.current = hash;
+    lastRenderedLenRef.current = newLen;
+    lastRenderedTimeRef.current = Date.now();
 
     // ── CSS: only inject when actually changed (prevents reflow) ──
     const newCss = (data.css || '') + CASCADE_FIX_CSS;
@@ -289,10 +310,12 @@ export function useChatPolling(
   }, [containerRef, renderSnapshot]);
 
   /**
-   * Restart — clear cached hash so next fetch always re-renders
+   * Restart — clear cached hash + anti-flicker guards so next fetch always re-renders
    */
   const restartPolling = useCallback(() => {
     lastHashRef.current = null;
+    lastRenderedLenRef.current = 0;
+    lastRenderedTimeRef.current = 0;
     fetchLiveChat();
   }, [fetchLiveChat]);
 
