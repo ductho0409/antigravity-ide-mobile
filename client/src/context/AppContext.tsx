@@ -171,10 +171,11 @@ export function AppProvider({ children }: { children: ComponentChildren }) {
 
     const showToast = useCallback((message: string, type: 'info' | 'success' | 'error' = 'info') => {
         const id = ++toastId;
-        setToasts(prev => [...prev, { id, message, type }]);
+        // Replace mode: only 1 toast at a time (matches admin behavior)
+        setToasts([{ id, message, type }]);
         setTimeout(() => {
             setToasts(prev => prev.filter(t => t.id !== id));
-        }, 3000);
+        }, 2500);
     }, []);
 
     const updateMobileSettings = useCallback(async (updates: Partial<MobileUISettings>) => {
