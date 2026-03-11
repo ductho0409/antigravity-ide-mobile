@@ -132,8 +132,11 @@ export function useChatPolling(
       styleEl.textContent = newCss;
     }
 
-    const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
-    const savedScrollTop = container.scrollTop;
+    // Save scroll state BEFORE any DOM mutation
+    const scrollTop = container.scrollTop;
+    const scrollHeight = container.scrollHeight;
+    const clientHeight = container.clientHeight;
+    const isAtBottom = scrollHeight - scrollTop - clientHeight < 100;
 
     const finalizeRender = () => {
       // Fix file chip display (block → inline-flex)
@@ -148,31 +151,35 @@ export function useChatPolling(
       // Invoke onRender callback (for attaching interactive handlers)
       optRef.current.onRender?.(container);
 
-      // ── Lock-aware scroll restoration ──
-      const lockRef = optRef.current.userScrollLockRef;
-      const autoRef = optRef.current.isAutoScrollingRef;
-      const isLocked = lockRef && lockRef.current > Date.now();
+      // ── Scroll restoration (runs after DOM is settled) ──
+      requestAnimationFrame(() => {
+        const lockRef = optRef.current.userScrollLockRef;
+        const autoRef = optRef.current.isAutoScrollingRef;
+        const isLocked = lockRef && lockRef.current > Date.now();
 
-      if (isLocked) {
-        // User is actively scrolling — restore by percentage to avoid jump
-        const maxScroll = container.scrollHeight - container.clientHeight;
-        if (maxScroll > 0 && savedScrollTop > 0) {
-          const pct = savedScrollTop / (container.scrollHeight - container.clientHeight || 1);
-          container.scrollTop = Math.round(pct * maxScroll);
+        if (isLocked) {
+          // User is actively scrolling — restore position proportionally
+          const newScrollHeight = container.scrollHeight;
+          const newMaxScroll = newScrollHeight - container.clientHeight;
+          if (newMaxScroll > 0 && scrollHeight > clientHeight) {
+            // Use ratio of old position to restore in the new DOM
+            const ratio = scrollTop / (scrollHeight - clientHeight);
+            container.scrollTop = Math.round(ratio * newMaxScroll);
+          } else {
+            container.scrollTop = scrollTop;
+          }
+        } else if (isAtBottom) {
+          // Was at bottom + not locked → auto-scroll to bottom
+          if (autoRef) autoRef.current = true;
+          container.scrollTop = container.scrollHeight;
+          if (autoRef) {
+            setTimeout(() => { autoRef.current = false; }, 400);
+          }
         } else {
-          container.scrollTop = savedScrollTop;
+          // Not at bottom, not locked → restore exact pixel position
+          container.scrollTop = scrollTop;
         }
-      } else if (isAtBottom) {
-        // Was at bottom + not locked → auto-scroll to bottom with flag
-        if (autoRef) autoRef.current = true;
-        container.scrollTop = container.scrollHeight;
-        if (autoRef) {
-          setTimeout(() => { autoRef.current = false; }, 400);
-        }
-      } else {
-        // Not at bottom, not locked → restore exact position
-        container.scrollTop = savedScrollTop;
-      }
+      });
     };
 
     // Use morphdom instead of innerHTML to prevent full DOM recreation
@@ -182,11 +189,14 @@ export function useChatPolling(
     // Check if morphdom is available (it should be since it's in package.json)
     // We import it dynamically if not imported at top
     import('morphdom').then(({ default: morphdom }) => {
+      // Immediately restore scroll position before morphdom modifies DOM
+      // (browser may reset scrollTop during DOM mutations)
+      const preScrollTop = container.scrollTop;
+      
       morphdom(container, tempDiv, {
         childrenOnly: true,
         onBeforeElUpdated: function (fromEl, toEl) {
           // Prevent morphdom from stripping our custom handler attributes
-          // Doing this BEFORE isEqualNode ensures identical nodes evaluate to true perfectly
           if (fromEl.hasAttribute('data-handler-attached')) {
             toEl.setAttribute('data-handler-attached', 'true');
           }
@@ -224,10 +234,15 @@ export function useChatPolling(
           }
         }
       });
+      
+      // Restore scroll immediately after morphdom (before rAF fires)
+      container.scrollTop = preScrollTop;
+      
       finalizeRender();
     }).catch(() => {
       // Fallback if morphdom fails to load
       container.innerHTML = data.html;
+      container.scrollTop = scrollTop;
       finalizeRender();
     });
   }, [containerRef, styleRef]);
