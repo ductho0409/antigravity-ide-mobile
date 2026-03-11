@@ -53,6 +53,8 @@ export function useWindows(opts: UseWindowsOptions = {}) {
 
     const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    /** Timestamp of last manual window switch (prevents polling from overwriting active target) */
+    const lastSwitchRef = useRef(0);
     /** Timestamp until which we respect user scroll and suppress auto-scroll-to-bottom */
     const userScrollLockRef = useRef(0);
     /** True while programmatic scroll is happening (suppress scroll sync back to desktop) */
@@ -65,7 +67,12 @@ export function useWindows(opts: UseWindowsOptions = {}) {
             const data = await res.json();
             const targets: WindowTarget[] = data.targets || [];
             setWindows(targets);
-            setActiveTargetId(data.activeTarget ?? null);
+            // Only update activeTargetId from server if user hasn't manually switched recently
+            // (prevents server's cached/stale activeTarget from overwriting user's choice)
+            const recentSwitch = Date.now() - lastSwitchRef.current < 10_000;
+            if (!recentSwitch) {
+                setActiveTargetId(data.activeTarget ?? null);
+            }
             return targets;
         } catch (e) {
             console.error('[Windows] Discovery failed:', e);
@@ -83,14 +90,16 @@ export function useWindows(opts: UseWindowsOptions = {}) {
             });
             const data = await res.json();
             if (data.success) {
+                // Mark this as a manual switch — prevents discoverWindows from overwriting
+                lastSwitchRef.current = Date.now();
                 setActiveTargetId(targetId);
                 showToast?.(`Switched to ${data.title || 'window'}`, 'success');
                 // Clear server-side message cache so next poll gets fresh content
                 authFetch(`${getServerUrl()}/api/chat/clear-cache`, { method: 'POST' }).catch(() => { });
                 // Reset FE polling hash so next poll renders fresh content
                 restartPolling?.();
-                // Refresh window list
-                await discoverWindows();
+                // Don't call discoverWindows() here — it would re-fetch activeTarget
+                // from server which may not have updated yet, overwriting our switch
                 return true;
             }
             showToast?.(data.error || 'Switch failed', 'error');
@@ -99,7 +108,7 @@ export function useWindows(opts: UseWindowsOptions = {}) {
             showToast?.('Switch failed: ' + (e instanceof Error ? e.message : 'unknown'), 'error');
             return false;
         }
-    }, [discoverWindows, showToast, restartPolling]);
+    }, [showToast, restartPolling]);
 
     // ─── Start new chat ─────────────────────────────────────────
     const startNewChat = useCallback(async (): Promise<boolean> => {
