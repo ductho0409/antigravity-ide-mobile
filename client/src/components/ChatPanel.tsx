@@ -310,8 +310,9 @@ export function ChatPanel() {
                     throw new Error(result.error);
                 }
             }
-        } catch (_e) {
-            showToast(t('mobile.chat.failedToSend'), 'error');
+        } catch (e) {
+            const msg = (e instanceof Error && e.message) ? e.message : t('mobile.chat.failedToSend');
+            showToast(msg, 'error');
         } finally {
             sendingRef.current = false;
         }

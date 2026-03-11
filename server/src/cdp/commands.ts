@@ -40,55 +40,76 @@ export async function injectCommand(text: string): Promise<{ success: boolean; i
 
 /**
  * Inject text and press Enter to submit
+ * Retries up to 3 times if CDP connection fails (IDE may be sleeping)
  */
-export async function injectAndSubmit(text: string): Promise<{ success: boolean; submitted?: string }> {
-    const target = await findEditorTarget();
-    if (!target) throw new Error('No editor target found');
+export async function injectAndSubmit(text: string): Promise<{ success: boolean; submitted?: string; error?: string }> {
+    let lastError: Error | null = null;
 
-    const client = await connectToTarget(target);
+    for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+            const target = await findEditorTarget();
+            if (!target) {
+                lastError = new Error('No editor target found — is the IDE running with --remote-debugging-port?');
+                if (attempt < 3) {
+                    await new Promise(r => setTimeout(r, 1000));
+                    continue;
+                }
+                break;
+            }
 
-    try {
-        // Focus the chat contenteditable input
-        await client.send('Runtime.evaluate', {
-            expression: `(function() {
-                var ce = document.querySelector('div[contenteditable="true"][role="textbox"]');
-                if (ce) { ce.focus(); ce.click(); return 'contenteditable-textbox'; }
-                ce = document.querySelector('[contenteditable="true"].cursor-text');
-                if (ce) { ce.focus(); ce.click(); return 'contenteditable-cursor'; }
-                ce = document.querySelector('[contenteditable="true"]');
-                if (ce) { ce.focus(); ce.click(); return 'contenteditable-generic'; }
-                return 'none';
-            })()`,
-            returnByValue: true
-        });
+            const client = await connectToTarget(target);
 
-        await new Promise(r => setTimeout(r, 50));
+            try {
+                // Focus the chat contenteditable input
+                await client.send('Runtime.evaluate', {
+                    expression: `(function() {
+                        var ce = document.querySelector('div[contenteditable="true"][role="textbox"]');
+                        if (ce) { ce.focus(); ce.click(); return 'contenteditable-textbox'; }
+                        ce = document.querySelector('[contenteditable="true"].cursor-text');
+                        if (ce) { ce.focus(); ce.click(); return 'contenteditable-cursor'; }
+                        ce = document.querySelector('[contenteditable="true"]');
+                        if (ce) { ce.focus(); ce.click(); return 'contenteditable-generic'; }
+                        return 'none';
+                    })()`,
+                    returnByValue: true
+                });
 
-        // Insert text
-        await client.send('Input.insertText', { text });
+                await new Promise(r => setTimeout(r, 50));
 
-        await new Promise(r => setTimeout(r, 50));
+                // Insert text
+                await client.send('Input.insertText', { text });
 
-        // Press Enter to submit
-        await client.send('Input.dispatchKeyEvent', {
-            type: 'keyDown',
-            key: 'Enter',
-            code: 'Enter',
-            windowsVirtualKeyCode: 13,
-            nativeVirtualKeyCode: 13
-        });
-        await client.send('Input.dispatchKeyEvent', {
-            type: 'keyUp',
-            key: 'Enter',
-            code: 'Enter',
-            windowsVirtualKeyCode: 13,
-            nativeVirtualKeyCode: 13
-        });
+                await new Promise(r => setTimeout(r, 50));
 
-        return { success: true, submitted: text };
-    } finally {
-        client.close();
+                // Press Enter to submit
+                await client.send('Input.dispatchKeyEvent', {
+                    type: 'keyDown',
+                    key: 'Enter',
+                    code: 'Enter',
+                    windowsVirtualKeyCode: 13,
+                    nativeVirtualKeyCode: 13
+                });
+                await client.send('Input.dispatchKeyEvent', {
+                    type: 'keyUp',
+                    key: 'Enter',
+                    code: 'Enter',
+                    windowsVirtualKeyCode: 13,
+                    nativeVirtualKeyCode: 13
+                });
+
+                return { success: true, submitted: text };
+            } finally {
+                client.close();
+            }
+        } catch (e) {
+            lastError = e as Error;
+            if (attempt < 3) {
+                await new Promise(r => setTimeout(r, 1000));
+            }
+        }
     }
+
+    throw lastError || new Error('Failed to inject after 3 attempts');
 }
 
 /**
