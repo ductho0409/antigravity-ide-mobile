@@ -12,7 +12,7 @@ import { useChatPolling } from '../hooks/useChatPolling';
 import { useWindows } from '../hooks/useWindows';
 import { attachAllHandlers } from '../chat/chatHandlers';
 import { ChatHistoryModal } from './ChatHistoryModal';
-import { Clock, Plus, Monitor, FolderOpen, ArrowLeft, Check, RefreshCw, Send, X, Terminal } from 'lucide-preact';
+import { Clock, Plus, Monitor, FolderOpen, ArrowLeft, Check, RefreshCw, Send, X, Terminal, Maximize2, Minimize2 } from 'lucide-preact';
 import { useTranslation } from '../i18n';
 import { OrnamentWrapper } from './OrnamentWrapper';
 
@@ -54,11 +54,35 @@ export function ChatPanel() {
     // Batch mode state
     const [batchMode, setBatchMode] = useState(false);
     const [batchCount, setBatchCount] = useState(0);
+    const sendingRef = useRef(false);
+
+    // Fullscreen mode
+    const [fullscreen, setFullscreen] = useState(false);
+
+    // Toggle fullscreen — add/remove class on body
+    useEffect(() => {
+        if (fullscreen) {
+            document.body.classList.add('chat-fullscreen');
+        } else {
+            document.body.classList.remove('chat-fullscreen');
+        }
+        return () => document.body.classList.remove('chat-fullscreen');
+    }, [fullscreen]);
+
+    // Escape key exits fullscreen
+    useEffect(() => {
+        if (!fullscreen) return;
+        const handler = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') setFullscreen(false);
+        };
+        document.addEventListener('keydown', handler);
+        return () => document.removeEventListener('keydown', handler);
+    }, [fullscreen]);
 
     // Refs for polling
     const cascadeRef = useRef<HTMLDivElement>(null);
     const cascadeStyleRef = useRef<HTMLStyleElement>(null);
-    const chatInputRef = useRef<HTMLInputElement>(null);
+    const chatInputRef = useRef<HTMLTextAreaElement>(null);
 
     // ─── Load Models & Modes (from chat-live.js loadModelsAndModes) ────
     const loadModelsAndModes = useCallback(async () => {
@@ -244,12 +268,19 @@ export function ChatPanel() {
         return () => { delete (window as unknown as Record<string, unknown>).addChatMessage; };
     }, [addChatMessage]);
 
-    // ─── Send Message (from chat.js sendChatMessage) ──────────────────
+    // ─── Send Message (with confirmation + double-send guard) ────────
     const sendMessage = useCallback(async () => {
         const input = chatInputRef.current;
         if (!input) return;
         const text = input.value.trim();
         if (!text) return;
+        if (sendingRef.current) return; // prevent double-send
+
+        // Confirmation dialog
+        const preview = text.length > 80 ? text.substring(0, 80) + '...' : text;
+        if (!confirm(`Send this message?\n\n"${preview}"`)) return;
+
+        sendingRef.current = true;
 
         try {
             if (batchMode) {
@@ -262,6 +293,7 @@ export function ChatPanel() {
                 const result = await res.json();
                 if (result.success) {
                     input.value = '';
+                    input.style.height = 'auto';
                     setBatchCount(result.queueLength ?? batchCount + 1);
                     showToast(`${t('mobile.chat.queued')} (${result.queueLength ?? batchCount + 1})`, 'success');
                 } else {
@@ -276,6 +308,7 @@ export function ChatPanel() {
                 const result = await res.json();
                 if (result.success) {
                     input.value = '';
+                    input.style.height = 'auto';
                     showToast(t('mobile.chat.sent'), 'success');
                 } else {
                     throw new Error(result.error);
@@ -283,6 +316,8 @@ export function ChatPanel() {
             }
         } catch (_e) {
             showToast(t('mobile.chat.failedToSend'), 'error');
+        } finally {
+            sendingRef.current = false;
         }
     }, [showToast, batchMode, batchCount]);
 
@@ -315,21 +350,27 @@ export function ChatPanel() {
         sendMessage();
     }, [sendMessage]);
 
-    // ─── Keyboard Enter handler ───────────────────────────────────────
-    const handleKeyDown = useCallback((e: KeyboardEvent) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendMessage();
-        }
-    }, [sendMessage]);
+    // ─── Keyboard handler (Enter = newline, no auto-send) ────────────
+    const handleKeyDown = useCallback((_e: KeyboardEvent) => {
+        // Enter = newline (default textarea behavior)
+        // No auto-send — user must tap the Send button
+    }, []);
+
+    // ─── Auto-resize textarea ────────────────────────────────────────
+    const handleInput = useCallback(() => {
+        const el = chatInputRef.current;
+        if (!el) return;
+        el.style.height = 'auto';
+        el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+    }, []);
 
     // ─── Mode display labels ─────────────────────────────────────────
     const modeLabel = currentMode.replace(/\s+/g, ' ').split(' ')[0];
 
     return (
         <OrnamentWrapper 
-            className="flex-1 min-h-0 chat-container m-2"
-            title={`${t('mobile.chat.windows')} / ${win.activeWindowName}`}
+            className={`flex-1 min-h-0 chat-container ${fullscreen ? 'chat-fullscreen-panel' : 'm-2'}`}
+            title={fullscreen ? undefined : `${t('mobile.chat.windows')} / ${win.activeWindowName}`}
         >
             <div class="flex-1 flex flex-col min-h-0">
                 {/* ─── Style tag for cascade CSS injection ─── */}
@@ -355,6 +396,13 @@ export function ChatPanel() {
                     <div class="flex items-center gap-1">
                         <button class="p-2 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-glass)] rounded-md transition-all" title={t('mobile.chat.pastChats')} onClick={() => win.loadChatHistory()}>
                             <Clock size={14} />
+                        </button>
+                        <button 
+                            class={`p-2 hover:bg-[var(--bg-glass)] rounded-md transition-all ${fullscreen ? 'text-[var(--brand)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}
+                            title={fullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+                            onClick={() => setFullscreen(f => !f)}
+                        >
+                            {fullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
                         </button>
                         <button class="p-2 text-[var(--brand)] hover:brightness-125 hover:bg-[var(--bg-glass)] rounded-md transition-all" title={t('mobile.chat.newChat')} onClick={() => win.startNewChat()}>
                             <Plus size={14} />
@@ -589,14 +637,16 @@ export function ChatPanel() {
                             >
                                 <Plus size={18} class={batchMode ? 'rotate-45 transition-transform' : 'transition-transform'} />
                             </button>
-                            <input
+                            <textarea
                                 ref={chatInputRef}
-                                type="text"
                                 id="chatInput"
-                                class="flex-1 bg-transparent border-none text-[13px] text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:ring-0 py-3"
+                                class="flex-1 bg-transparent border-none text-[13px] text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:ring-0 py-3 resize-none overflow-y-auto"
+                                style={{ height: 'auto', maxHeight: '120px' }}
+                                rows={1}
                                 placeholder={batchMode ? t('mobile.chat.queueMessage') : t('mobile.chat.sendMessage')}
                                 autoComplete="off"
                                 onKeyDown={handleKeyDown}
+                                onInput={handleInput}
                             />
                             <button class="p-3 text-[var(--brand)] hover:brightness-125 transition-all active:scale-90" onClick={sendMessage}>
                                 <Send size={18} />

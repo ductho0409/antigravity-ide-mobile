@@ -127,29 +127,53 @@ function AppContent() {
         }
     }, []);
 
-    // Mobile keyboard viewport fix + chatInput auto-scroll (from original main.js)
+    // Mobile keyboard viewport fix — robust iOS Safari support
     useEffect(() => {
+        const root = document.documentElement;
+        
         if (window.visualViewport) {
-            const handleResize = () => {
-                document.body.style.height = window.visualViewport!.height + 'px';
-                // Auto-scroll chat input into view when keyboard opens
-                const chatInput = document.getElementById('chatInput');
-                if (document.activeElement === chatInput) {
-                    setTimeout(() => {
-                        chatInput?.scrollIntoView({ block: 'end', behavior: 'smooth' });
-                    }, 100);
-                }
+            let pendingRAF: number | null = null;
+            
+            const handleViewport = () => {
+                if (pendingRAF) cancelAnimationFrame(pendingRAF);
+                pendingRAF = requestAnimationFrame(() => {
+                    const vv = window.visualViewport!;
+                    const keyboardHeight = window.innerHeight - vv.height;
+                    const isKeyboardOpen = keyboardHeight > 100; // threshold for real keyboard
+                    
+                    // Set CSS custom property for keyboard offset
+                    root.style.setProperty('--keyboard-height', `${keyboardHeight}px`);
+                    root.style.setProperty('--visual-viewport-height', `${vv.height}px`);
+                    document.body.style.height = vv.height + 'px';
+
+                    if (isKeyboardOpen) {
+                        document.body.classList.add('keyboard-open');
+                        // Scroll active input into view
+                        const active = document.activeElement as HTMLElement;
+                        if (active?.tagName === 'TEXTAREA' || active?.tagName === 'INPUT') {
+                            setTimeout(() => {
+                                active.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                            }, 50);
+                        }
+                    } else {
+                        document.body.classList.remove('keyboard-open');
+                    }
+                    pendingRAF = null;
+                });
             };
-            window.visualViewport.addEventListener('resize', handleResize);
-            window.visualViewport.addEventListener('scroll', handleResize);
-            handleResize();
+            
+            window.visualViewport.addEventListener('resize', handleViewport);
+            window.visualViewport.addEventListener('scroll', handleViewport);
+            handleViewport();
             return () => {
-                window.visualViewport!.removeEventListener('resize', handleResize);
-                window.visualViewport!.removeEventListener('scroll', handleResize);
+                window.visualViewport!.removeEventListener('resize', handleViewport);
+                window.visualViewport!.removeEventListener('scroll', handleViewport);
+                if (pendingRAF) cancelAnimationFrame(pendingRAF);
             };
         } else {
             const handleResize = () => {
                 document.body.style.height = window.innerHeight + 'px';
+                root.style.setProperty('--visual-viewport-height', `${window.innerHeight}px`);
             };
             window.addEventListener('resize', handleResize);
             handleResize();

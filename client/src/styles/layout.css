@@ -267,3 +267,102 @@ body.sidebar-expanded.bottombar-mode .content,
 body.sidebar-expanded.bottombar-mode .header {
     margin-left: 0 !important;
 }
+
+/* ========== iOS Keyboard Open State ========== */
+:root {
+    --keyboard-height: 0px;
+    --visual-viewport-height: 100vh;
+}
+
+body.keyboard-open {
+    height: var(--visual-viewport-height) !important;
+    overflow: hidden !important;
+}
+
+body.keyboard-open .content {
+    height: var(--visual-viewport-height) !important;
+    overflow: hidden !important;
+}
+
+/* Ensure chat container fills available space when keyboard is open */
+body.keyboard-open #chat-container {
+    height: var(--visual-viewport-height) !important;
+    max-height: var(--visual-viewport-height) !important;
+}
+
+/* Keep chat input area always visible above keyboard */
+body.keyboard-open .chat-container {
+    height: 100% !important;
+    max-height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+/* Prevent iOS Safari overscroll/bounce when keyboard open */
+body.keyboard-open * {
+    overscroll-behavior: none;
+}
+
+/* Safe area insets for iPhone notch/home indicator */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+    .chat-container {
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+}
+
+/* ========== Chat Fullscreen Mode ========== */
+body.chat-fullscreen .sidebar,
+body.chat-fullscreen #topbar,
+body.chat-fullscreen .bottom-tab-bar,
+body.chat-fullscreen .pwa-install-prompt {
+    display: none !important;
+}
+
+body.chat-fullscreen .content {
+    margin-left: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+}
+
+body.chat-fullscreen #chat-container {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    max-width: 100% !important;
+    padding-top: 0 !important;
+    z-index: 9999;
+    animation: fullscreenIn 0.2s ease-out;
+}
+
+body.chat-fullscreen .chat-fullscreen-panel {
+    margin: 0 !important;
+    border-radius: 0 !important;
+    border: none !important;
+    height: 100% !important;
+}
+
+/* Hide non-chat panels */
+body.chat-fullscreen #filesPanel,
+body.chat-fullscreen #gitPanel,
+body.chat-fullscreen #settingsPanel,
+body.chat-fullscreen #assistPanel,
+body.chat-fullscreen #streamPanel,
+body.chat-fullscreen #terminal-container {
+    display: none !important;
+}
+
+@keyframes fullscreenIn {
+    from {
+        opacity: 0.8;
+        transform: scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
