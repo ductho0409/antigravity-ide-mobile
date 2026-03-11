@@ -151,35 +151,32 @@ export function useChatPolling(
       // Invoke onRender callback (for attaching interactive handlers)
       optRef.current.onRender?.(container);
 
-      // ── Scroll restoration (runs after DOM is settled) ──
-      requestAnimationFrame(() => {
-        const lockRef = optRef.current.userScrollLockRef;
-        const autoRef = optRef.current.isAutoScrollingRef;
-        const isLocked = lockRef && lockRef.current > Date.now();
+      // ── Synchronous scroll restoration (MUST NOT use rAF — causes 1-frame flash to top) ──
+      const lockRef = optRef.current.userScrollLockRef;
+      const autoRef = optRef.current.isAutoScrollingRef;
+      const isLocked = lockRef && lockRef.current > Date.now();
 
-        if (isLocked) {
-          // User is actively scrolling — restore position proportionally
-          const newScrollHeight = container.scrollHeight;
-          const newMaxScroll = newScrollHeight - container.clientHeight;
-          if (newMaxScroll > 0 && scrollHeight > clientHeight) {
-            // Use ratio of old position to restore in the new DOM
-            const ratio = scrollTop / (scrollHeight - clientHeight);
-            container.scrollTop = Math.round(ratio * newMaxScroll);
-          } else {
-            container.scrollTop = scrollTop;
-          }
-        } else if (isAtBottom) {
-          // Was at bottom + not locked → auto-scroll to bottom
-          if (autoRef) autoRef.current = true;
-          container.scrollTop = container.scrollHeight;
-          if (autoRef) {
-            setTimeout(() => { autoRef.current = false; }, 400);
-          }
+      if (isLocked) {
+        // User is actively scrolling — restore position proportionally
+        const newScrollHeight = container.scrollHeight;
+        const newMaxScroll = newScrollHeight - container.clientHeight;
+        if (newMaxScroll > 0 && scrollHeight > clientHeight) {
+          const ratio = scrollTop / (scrollHeight - clientHeight);
+          container.scrollTop = Math.round(ratio * newMaxScroll);
         } else {
-          // Not at bottom, not locked → restore exact pixel position
           container.scrollTop = scrollTop;
         }
-      });
+      } else if (isAtBottom) {
+        // Was at bottom + not locked → auto-scroll to bottom
+        if (autoRef) autoRef.current = true;
+        container.scrollTop = container.scrollHeight;
+        if (autoRef) {
+          setTimeout(() => { autoRef.current = false; }, 400);
+        }
+      } else {
+        // Not at bottom, not locked → restore exact pixel position
+        container.scrollTop = scrollTop;
+      }
     };
 
     // Use morphdom instead of innerHTML to prevent full DOM recreation

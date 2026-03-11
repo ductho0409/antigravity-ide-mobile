@@ -332,7 +332,6 @@ body.sidebar-expanded .content {
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-y: contain;
     /* Isolate layout changes to prevent parent reflows on content change */
-    contain: layout;
     min-height: 0;
 }
 

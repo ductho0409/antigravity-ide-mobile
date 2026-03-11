@@ -147,13 +147,15 @@ function AppContent() {
                     document.body.style.height = vv.height + 'px';
 
                     if (isKeyboardOpen) {
-                        document.body.classList.add('keyboard-open');
-                        // Scroll active input into view
-                        const active = document.activeElement as HTMLElement;
-                        if (active?.tagName === 'TEXTAREA' || active?.tagName === 'INPUT') {
-                            setTimeout(() => {
-                                active.scrollIntoView({ block: 'center', behavior: 'smooth' });
-                            }, 50);
+                        if (!document.body.classList.contains('keyboard-open')) {
+                            document.body.classList.add('keyboard-open');
+                            // Scroll chat input into view ONLY on initial keyboard open
+                            const active = document.activeElement as HTMLElement;
+                            if (active?.id === 'chatInput') {
+                                setTimeout(() => {
+                                    active.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                                }, 100);
+                            }
                         }
                     } else {
                         document.body.classList.remove('keyboard-open');
