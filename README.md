@@ -23,7 +23,7 @@
 
 ---
 
-> **Fork & Remix** of [AvenalJ/Antigravity-Mobile](https://github.com/AvenalJ/Antigravity-Mobile) — completely rewritten from vanilla JS to a modern TypeScript monorepo with Preact, Vite, Tailwind CSS, and CodeMirror 6.
+> **Fork & Remix** of [mrkungfudn/antigravity-ide-mobile](https://github.com/mrkungfudn/antigravity-ide-mobile) — with custom UX improvements for mobile chat (fullscreen mode, send confirmation, iOS keyboard handling).
 
 ---
 
@@ -154,14 +154,14 @@ All remote operations happen via Chrome DevTools Protocol — no IDE plugins nee
 
 ```bash
 # Clone
-git clone https://github.com/mrkungfudn/antigravity-ide-mobile.git
+git clone https://github.com/ductho0409/antigravity-ide-mobile.git
 cd antigravity-ide-mobile
 
 # Install & build
 cd client && npm install && npm run build && cd ..
 cd server && npm install && npm run build && cd ..
 
-# Start
+# Start (development mode)
 npm run dev
 ```
 
@@ -336,8 +336,78 @@ MOBILE_PIN=1234 npm run dev
 The launcher starts Antigravity IDE with CDP automatically. To connect manually:
 
 ```bash
+# Default (port 9222 — may conflict with Chrome agent)
 antigravity --remote-debugging-port=9222
+
+# Recommended (port 9223 — avoids conflict)
+/Applications/Antigravity.app/Contents/MacOS/Electron --remote-debugging-port=9223
 ```
+
+> **Note:** Port `9222` is often occupied by Chrome (used by Antigravity's AI agent browser). Use port `9223` instead. Update `data/config.json` → `devices[0].cdpPort` to match.
+
+---
+
+## 🖥️ macOS Persistent Setup (pm2 + Tailscale)
+
+For running the server 24/7 as a background service:
+
+### 1. Install pm2
+
+```bash
+npm install -g pm2
+```
+
+### 2. Start with pm2
+
+```bash
+# From project root
+pm2 start ecosystem.config.cjs
+```
+
+The included `ecosystem.config.cjs` runs the server in production mode with auto-restart and logging.
+
+### 3. Auto-start on boot
+
+```bash
+pm2 startup launchd   # generates launchd plist
+pm2 save              # saves current process list
+```
+
+### 4. Launch IDE with CDP
+
+Use the included script (kills old instances, launches with CDP on port 9223):
+
+```bash
+bash scripts/start-ide.sh
+```
+
+Or add a shell alias for convenience:
+
+```bash
+echo 'alias aide="bash /path/to/antigravity-ide-mobile/scripts/start-ide.sh"' >> ~/.zshrc
+source ~/.zshrc
+# Then just run: aide
+```
+
+### 5. Remote Access via Tailscale
+
+If both your server machine and phone are on [Tailscale](https://tailscale.com/):
+
+```
+http://<TAILSCALE_IP>:3333
+```
+
+No port forwarding or Cloudflare tunnel needed — encrypted P2P access from anywhere.
+
+### pm2 Useful Commands
+
+| Command | Description |
+|---------|-------------|
+| `pm2 status` | Check server status |
+| `pm2 logs antigravity-mobile` | View live logs |
+| `pm2 restart antigravity-mobile` | Restart server |
+| `pm2 stop antigravity-mobile` | Stop server |
+| `pm2 monit` | Dashboard view |
 
 ---
 
@@ -373,8 +443,11 @@ All UI strings, labels, and messages are translatable. Switch language in **Sett
 
 | Problem | Fix |
 |---------|-----|
-| CDP not connecting | Start Antigravity via launcher, or add `--remote-debugging-port=9222` manually |
+| CDP not connecting | Use port `9223` instead of `9222`. Launch IDE: `/Applications/Antigravity.app/Contents/MacOS/Electron --remote-debugging-port=9223` |
+| CDP shows Chrome, not IDE | Port 9222 is used by Chrome agent. Change to 9223 in `data/config.json` |
 | Can't access from phone | Same Wi-Fi? Try PC's IP instead of `localhost`. Check firewall for port 3333 |
+| iOS keyboard hides input | Clear browser cache and reload — v2.0 includes `visualViewport` fix |
+| Server keeps dying | Use `pm2 start ecosystem.config.cjs` for auto-restart |
 | Telegram not sending | Verify token + chat ID. Check Admin → Telegram toggles |
 | Stream lag | Lower quality in Stream panel settings. Check network bandwidth |
 | Build errors | Run `cd client && npm install && cd ../server && npm install` |
