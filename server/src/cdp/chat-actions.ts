@@ -128,6 +128,75 @@ export async function closeHistoryPanel(): Promise<ChatActionResult> {
 }
 
 /**
+ * [ACTION] STOP_AGENT
+ * Dừng agent đang chạy bằng cách:
+ * 1. Tìm nút "Stop" trong cascade và click vào
+ * 2. Nếu không tìm thấy, gửi phím Escape qua CDP
+ */
+export async function stopAgent(): Promise<ChatActionResult> {
+    return withCDP<ChatActionResult>(8000, async (call: CDPCallFn) => {
+        // Try to find and click the Stop button in the IDE UI
+        const FIND_STOP = `(() => {
+            // Look for stop button by text content
+            const allBtns = Array.from(document.querySelectorAll('button, [role="button"]'));
+            for (const btn of allBtns) {
+                if (btn.offsetParent === null) continue;
+                const text = (btn.textContent || '').trim().toLowerCase();
+                const aria = (btn.getAttribute('aria-label') || '').toLowerCase();
+                if (text === 'stop' || text === 'cancel' || text.includes('stop generating') ||
+                    aria === 'stop' || aria.includes('stop') || aria.includes('cancel')) {
+                    const rect = btn.getBoundingClientRect();
+                    if (rect.width > 0 && rect.height > 0) {
+                        return { found: true, x: rect.x + rect.width/2, y: rect.y + rect.height/2 };
+                    }
+                }
+            }
+            // Also look for stop icon (square icon in toolbar)
+            for (const btn of allBtns) {
+                if (btn.offsetParent === null) continue;
+                const svg = btn.querySelector('svg');
+                if (svg && (svg.classList.contains('lucide-square') || svg.classList.contains('lucide-stop-circle'))) {
+                    const rect = btn.getBoundingClientRect();
+                    if (rect.width > 0 && rect.height > 0) {
+                        return { found: true, x: rect.x + rect.width/2, y: rect.y + rect.height/2 };
+                    }
+                }
+            }
+            return { found: false };
+        })()`;
+
+        const findResult = await call('Runtime.evaluate', {
+            expression: FIND_STOP,
+            returnByValue: true
+        });
+        const btn = (findResult as Record<string, Record<string, unknown>>).result?.value as { found: boolean; x?: number; y?: number } | undefined;
+
+        if (btn?.found && btn.x !== undefined && btn.y !== undefined) {
+            await call('Input.dispatchMouseEvent', {
+                type: 'mousePressed', x: Math.round(btn.x), y: Math.round(btn.y),
+                button: 'left', clickCount: 1
+            });
+            await call('Input.dispatchMouseEvent', {
+                type: 'mouseReleased', x: Math.round(btn.x), y: Math.round(btn.y),
+                button: 'left', clickCount: 1
+            });
+            return { success: true, method: 'stop_button' };
+        }
+
+        // Fallback: send Escape key (same as closeHistoryPanel)
+        await call('Input.dispatchKeyEvent', {
+            type: 'keyDown', key: 'Escape', code: 'Escape',
+            windowsVirtualKeyCode: 27, nativeVirtualKeyCode: 27
+        });
+        await call('Input.dispatchKeyEvent', {
+            type: 'keyUp', key: 'Escape', code: 'Escape',
+            windowsVirtualKeyCode: 27, nativeVirtualKeyCode: 27
+        });
+        return { success: true, method: 'escape_key' };
+    }, { success: false, error: 'WebSocket error' });
+}
+
+/**
  * [ACTION] GET_CHAT_HISTORY
  * Quét toàn bộ danh sách các cuộc hội thoại cũ đã lưu từ thanh Sidebar Của IDE.
  * Hàm sẽ tự động mở panel lịch sử (nếu bị đóng), tìm kiếm vùng chứa các tin nhắn cũ

@@ -5,6 +5,7 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
 import { openFileInIDE, openFileDiffInIDE } from '../cdp/file-ops.js';
+import { stopAgent } from '../cdp/chat-actions.js';
 
 // ============================================================================
 // Service interfaces (dependency injection)
@@ -159,42 +160,15 @@ export function createCdpRoutes(deps: CdpRouteDeps): Router {
         }
     });
 
-    // ── Stop Agent (send Escape to cancel) ─────────────────────────────
+    // ── Stop Agent (send Escape / click Stop button) ───────────────────
     router.post('/api/cdp/stop-agent', async (_req: Request, res: Response) => {
         try {
-            // Send Escape key to the IDE to interrupt the running agent
-            const targets = await CDP.getTargets();
-            if (!targets || (targets as unknown[]).length === 0) {
-                return res.status(503).json({ success: false, error: 'No IDE target found' });
-            }
-            // Use the existing focusInput then Escape approach
-            // First try clicking the stop button in cascade
-            const stopResult = await ChatStream.clickInCascade(
-                '',
-                'Stop',
-                0
-            );
-            if (stopResult.success) {
-                emitEvent('success', '🛑 Agent stopped via button');
+            const result = await stopAgent();
+            if (result.success) {
+                emitEvent('success', `🛑 Agent stopped (${result.method})`);
                 broadcast('agent_stopped', {});
-                return res.json({ success: true, method: 'stop_button' });
             }
-            // Fallback: send Escape key via CDP
-            await CDP.focusInput();
-            // dispatchKeyEvent via injectCommand with Escape
-            const result = await CDP.clickElementByXPath('__ESCAPE_KEY__');
-            // If xpath approach fails, try direct key injection
-            if (!result.success) {
-                // Use the closeHistoryPanel approach which sends Escape
-                const escResult = await deps.ChatStream.clickInCascade('', 'Cancel', 0);
-                if (!escResult.success) {
-                    // Last resort: inject escape via the keyboard shortcut
-                    emitEvent('info', '🛑 Sending stop signal...');
-                }
-            }
-            emitEvent('success', '🛑 Agent stop signal sent');
-            broadcast('agent_stopped', {});
-            res.json({ success: true, method: 'escape_key' });
+            res.json(result);
         } catch (e) {
             res.status(500).json({ success: false, error: (e as Error).message });
         }
