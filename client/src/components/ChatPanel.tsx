@@ -12,7 +12,7 @@ import { useChatPolling } from '../hooks/useChatPolling';
 import { useWindows } from '../hooks/useWindows';
 import { attachAllHandlers } from '../chat/chatHandlers';
 import { ChatHistoryModal } from './ChatHistoryModal';
-import { Clock, Plus, Monitor, FolderOpen, ArrowLeft, Check, RefreshCw, Send, X, Terminal, Maximize2, Minimize2, Square } from 'lucide-preact';
+import { Clock, Plus, Monitor, FolderOpen, ArrowLeft, Check, RefreshCw, Send, X, Terminal, Maximize2, Minimize2 } from 'lucide-preact';
 import { useTranslation } from '../i18n';
 import { OrnamentWrapper } from './OrnamentWrapper';
 
@@ -55,7 +55,6 @@ export function ChatPanel() {
     const [batchMode, setBatchMode] = useState(false);
     const [batchCount, setBatchCount] = useState(0);
     const sendingRef = useRef(false);
-    const [stopping, setStopping] = useState(false);
 
     // Fullscreen mode
     const [fullscreen, setFullscreen] = useState(false);
@@ -645,29 +644,6 @@ export function ChatPanel() {
                                 onKeyDown={handleKeyDown}
                                 onInput={handleInput}
                             />
-                            <button
-                                class="p-3 text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-all active:scale-90"
-                                title="Stop agent"
-                                onClick={async () => {
-                                    if (stopping) return;
-                                    setStopping(true);
-                                    try {
-                                        const res = await authFetch(`${getServerUrl()}/api/cdp/stop-agent`, { method: 'POST' });
-                                        const data = await res.json();
-                                        if (data.success) {
-                                            showToast('🛑 Agent stopped', 'success');
-                                        } else {
-                                            showToast(data.error || 'Stop failed', 'error');
-                                        }
-                                    } catch {
-                                        showToast('Stop failed', 'error');
-                                    } finally {
-                                        setStopping(false);
-                                    }
-                                }}
-                            >
-                                <Square size={16} fill="currentColor" />
-                            </button>
                             <button class="p-3 text-[var(--brand)] hover:brightness-125 transition-all active:scale-90" onClick={sendMessage}>
                                 <Send size={18} />
                             </button>
