@@ -268,17 +268,13 @@ export function ChatPanel() {
         return () => { delete (window as unknown as Record<string, unknown>).addChatMessage; };
     }, [addChatMessage]);
 
-    // ─── Send Message (with confirmation + double-send guard) ────────
+    // ─── Send Message (with double-send guard) ──────────────────────
     const sendMessage = useCallback(async () => {
         const input = chatInputRef.current;
         if (!input) return;
         const text = input.value.trim();
         if (!text) return;
         if (sendingRef.current) return; // prevent double-send
-
-        // Confirmation dialog
-        const preview = text.length > 80 ? text.substring(0, 80) + '...' : text;
-        if (!confirm(`Send this message?\n\n"${preview}"`)) return;
 
         sendingRef.current = true;
 
@@ -640,7 +636,7 @@ export function ChatPanel() {
                             <textarea
                                 ref={chatInputRef}
                                 id="chatInput"
-                                class="flex-1 bg-transparent border-none text-[13px] text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:ring-0 py-3 resize-none overflow-y-auto"
+                                class="flex-1 bg-transparent border-none text-[15px] text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:ring-0 py-3 resize-none overflow-y-auto"
                                 style={{ height: 'auto', maxHeight: '120px' }}
                                 rows={1}
                                 placeholder={batchMode ? t('mobile.chat.queueMessage') : t('mobile.chat.sendMessage')}
