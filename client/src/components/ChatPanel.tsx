@@ -286,6 +286,10 @@ export function ChatPanel() {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ text }),
                 });
+                if (!res.ok) {
+                    const errData = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+                    throw new Error(errData.error || `Server error ${res.status}`);
+                }
                 const result = await res.json();
                 if (result.success) {
                     input.value = '';
@@ -293,7 +297,7 @@ export function ChatPanel() {
                     setBatchCount(result.queueLength ?? batchCount + 1);
                     showToast(`${t('mobile.chat.queued')} (${result.queueLength ?? batchCount + 1})`, 'success');
                 } else {
-                    throw new Error(result.error);
+                    throw new Error(result.error || 'Queue failed');
                 }
             } else {
                 const res = await authFetch(`${getServerUrl()}/api/cdp/inject`, {
@@ -301,18 +305,22 @@ export function ChatPanel() {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ text, submit: true }),
                 });
+                if (!res.ok) {
+                    const errData = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+                    throw new Error(errData.error || `Server error ${res.status}`);
+                }
                 const result = await res.json();
                 if (result.success) {
                     input.value = '';
                     input.style.height = 'auto';
                     showToast(t('mobile.chat.sent'), 'success');
                 } else {
-                    throw new Error(result.error);
+                    throw new Error(result.error || 'Send failed — IDE may not be connected');
                 }
             }
         } catch (e) {
-            const msg = (e instanceof Error && e.message) ? e.message : t('mobile.chat.failedToSend');
-            showToast(msg, 'error');
+            const msg = (e instanceof Error && e.message) ? e.message : 'Connection error';
+            showToast(`❌ ${msg}`, 'error');
         } finally {
             sendingRef.current = false;
         }

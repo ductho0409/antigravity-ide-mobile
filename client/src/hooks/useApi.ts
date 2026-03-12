@@ -22,7 +22,7 @@ export function getServerUrl(): string {
 }
 
 /**
- * Fetch wrapper that attaches auth token
+ * Fetch wrapper that attaches auth token + 15s timeout
  */
 export async function authFetch(url: string, options: RequestInit = {}): Promise<Response> {
     const headers: Record<string, string> = {
@@ -37,24 +37,41 @@ export async function authFetch(url: string, options: RequestInit = {}): Promise
     // Antigravity Mobile Tracking
     headers['X-Antigravity-Mobile-Tracking'] = 'Antigravitymobile';
 
-    const res = await fetch(url, { ...options, headers });
+    // Timeout: 15s (CDP retry can take up to 6s, plus network latency)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-    // Handle 401 — clear token if server says auth is required
-    if (res.status === 401) {
-        try {
-            const cloned = res.clone();
-            const data = await cloned.json();
-            if (data.needsAuth) {
-                clearToken();
-                // Force page reload to show login screen
-                window.location.reload();
+    try {
+        const res = await fetch(url, {
+            ...options,
+            headers,
+            signal: options.signal || controller.signal,
+        });
+
+        // Handle 401 — clear token if server says auth is required
+        if (res.status === 401) {
+            try {
+                const cloned = res.clone();
+                const data = await cloned.json();
+                if (data.needsAuth) {
+                    clearToken();
+                    // Force page reload to show login screen
+                    window.location.reload();
+                }
+            } catch (_e) {
+                // Ignore JSON parse errors
             }
-        } catch (_e) {
-            // Ignore JSON parse errors
         }
-    }
 
-    return res;
+        return res;
+    } catch (e) {
+        if ((e as Error).name === 'AbortError') {
+            throw new Error('Request timed out — server not responding');
+        }
+        throw e;
+    } finally {
+        clearTimeout(timeoutId);
+    }
 }
 
 /**
