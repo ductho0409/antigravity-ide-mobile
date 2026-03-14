@@ -278,6 +278,9 @@ export function ChatPanel() {
 
         sendingRef.current = true;
 
+        // Copy to clipboard BEFORE sending — backup in case of failure
+        try { await navigator.clipboard.writeText(text); } catch { /* clipboard may not be available */ }
+
         try {
             if (batchMode) {
                 // Queue message for batch sending
