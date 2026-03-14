@@ -279,7 +279,16 @@ export function ChatPanel() {
         sendingRef.current = true;
 
         // Copy to clipboard BEFORE sending — backup in case of failure
-        try { await navigator.clipboard.writeText(text); } catch { /* clipboard may not be available */ }
+        // Use execCommand fallback because navigator.clipboard requires HTTPS
+        try {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px;opacity:0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+        } catch { /* clipboard may not be available */ }
 
         try {
             if (batchMode) {
