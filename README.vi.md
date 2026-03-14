@@ -152,17 +152,22 @@ Mọi thao tác từ xa đều qua Chrome DevTools Protocol — không cần plu
 
 **Yêu cầu:** Node.js 18+, đã cài [Antigravity IDE](https://antigravity.google)
 
+> 📖 Xem hướng dẫn cài đặt chi tiết tại [INSTALL.md](INSTALL.md).
+
 ```bash
 # Clone
-git clone https://github.com/mrkungfudn/antigravity-ide-mobile.git
+git clone https://github.com/ductho0409/antigravity-ide-mobile.git
 cd antigravity-ide-mobile
 
 # Cài đặt & build
 cd client && npm install && npm run build && cd ..
 cd server && npm install && npm run build && cd ..
 
-# Chạy
+# Chạy (chế độ phát triển)
 npm run dev
+
+# Hoặc cài dịch vụ macOS (tự chạy khi đăng nhập)
+bash scripts/install-service.sh
 ```
 
 **Hoặc dùng script khởi chạy:**
@@ -262,7 +267,11 @@ antigravity-mobile/
 │   └── tsconfig.json
 │
 ├── scripts/                         # Script khởi động/dừng (Windows + Mac/Linux)
+│   ├── install-service.sh           # Cài dịch vụ launchd macOS
+│   ├── uninstall-service.sh         # Gỡ dịch vụ launchd
+│   └── start-server.sh              # Script khởi chạy server
 ├── data/                            # Config & session data (gitignored)
+├── INSTALL.md                       # Hướng dẫn cài đặt chi tiết
 └── package.json                     # Script monorepo root
 ```
 
@@ -304,7 +313,29 @@ MOBILE_PIN=1234 npm run dev
 Launcher tự khởi chạy Antigravity IDE với CDP. Nếu muốn kết nối thủ công:
 
 ```bash
-antigravity --remote-debugging-port=9222
+# Khuyến nghị dùng port 9223 (port 9222 thường dùng bởi Chrome agent)
+/Applications/Antigravity.app/Contents/MacOS/Electron --remote-debugging-port=9223
+```
+
+> **Lưu ý:** Port `9222` thường bị chiếm bởi Chrome (Antigravity AI agent browser). Dùng port `9223`. Sửa trong `data/config.json` → `devices[0].cdpPort` cho khớp.
+
+### Dịch vụ nền macOS (launchd)
+
+Script cài đặt sẵn tạo launchd user agent tự chạy khi đăng nhập:
+
+```bash
+# Cài dịch vụ
+bash scripts/install-service.sh
+
+# Dừng / khởi động
+launchctl unload ~/Library/LaunchAgents/com.antigravity.mobile-bridge.plist
+launchctl load   ~/Library/LaunchAgents/com.antigravity.mobile-bridge.plist
+
+# Xem logs
+tail -f logs/server.log
+
+# Gỡ cài đặt
+bash scripts/uninstall-service.sh
 ```
 
 ---
@@ -341,7 +372,8 @@ Tất cả chuỗi UI, nhãn, tin nhắn đều có thể dịch. Chuyển ngôn
 
 | Vấn đề                                  | Cách khắc phục                                                                    |
 | ------------------------------------------ | ------------------------------------------------------------------------------------ |
-| CDP không kết nối                       | Khởi chạy Antigravity qua launcher, hoặc thêm `--remote-debugging-port=9222`   |
+| CDP không kết nối                       | Dùng port `9223` thay vì `9222`. Khởi chạy: `/Applications/Antigravity.app/Contents/MacOS/Electron --remote-debugging-port=9223` |
+| CDP kết nối nhầm Chrome           | Port 9222 bị Chrome chiếm. Đổi sang `9223` trong `data/config.json` → `devices[0].cdpPort` |
 | Không truy cập được từ điện thoại | Cùng Wi-Fi? Thử IP máy tính thay vì `localhost`. Kiểm tra firewall port 3333 |
 | Telegram không gửi                       | Xác minh token + chat ID. Kiểm tra bật/tắt trong Admin → Telegram               |
 | Stream bị lag                             | Giảm chất lượng trong cài đặt Stream panel. Kiểm tra băng thông mạng      |

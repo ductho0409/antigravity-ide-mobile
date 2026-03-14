@@ -152,6 +152,8 @@ All remote operations happen via Chrome DevTools Protocol — no IDE plugins nee
 
 **Requirements:** Node.js 18+, [Antigravity IDE](https://antigravity.google) installed
 
+> 📖 For detailed Vietnamese installation guide, see [INSTALL.md](INSTALL.md).
+
 ```bash
 # Clone
 git clone https://github.com/ductho0409/antigravity-ide-mobile.git
@@ -163,6 +165,9 @@ cd server && npm install && npm run build && cd ..
 
 # Start (development mode)
 npm run dev
+
+# Or install as macOS service (auto-start on login)
+bash scripts/install-service.sh
 ```
 
 **Or use the launcher scripts:**
@@ -294,7 +299,11 @@ antigravity-mobile/
 │   └── tsconfig.json
 │
 ├── scripts/                         # Launch/stop scripts (Win + Mac/Linux)
+│   ├── install-service.sh           # macOS launchd service installer
+│   ├── uninstall-service.sh         # macOS launchd service remover
+│   └── start-server.sh              # Server startup script
 ├── data/                            # Runtime config & session data (gitignored)
+├── INSTALL.md                       # Detailed installation guide (Vietnamese)
 └── package.json                     # Monorepo root scripts
 ```
 
@@ -347,49 +356,57 @@ antigravity --remote-debugging-port=9222
 
 ---
 
-## 🖥️ macOS Persistent Setup (pm2 + Tailscale)
+## 🖥️ macOS Persistent Setup
 
-For running the server 24/7 as a background service:
+Two options for running the server 24/7 as a background service:
 
-### 1. Install pm2
+### Option A: launchd (Recommended — zero dependencies)
+
+The included install script creates a native macOS launchd user agent:
+
+```bash
+# Install service (auto-starts on login)
+bash scripts/install-service.sh
+
+# Service commands
+launchctl unload ~/Library/LaunchAgents/com.antigravity.mobile-bridge.plist  # Stop
+launchctl load   ~/Library/LaunchAgents/com.antigravity.mobile-bridge.plist  # Start
+
+# View logs
+tail -f logs/server.log
+
+# Uninstall
+bash scripts/uninstall-service.sh
+```
+
+### Option B: pm2 (Alternative)
 
 ```bash
 npm install -g pm2
-```
-
-### 2. Start with pm2
-
-```bash
-# From project root
 pm2 start ecosystem.config.cjs
+pm2 startup launchd && pm2 save  # auto-start on boot
 ```
 
-The included `ecosystem.config.cjs` runs the server in production mode with auto-restart and logging.
+| Command | Description |
+|---------|-------------|
+| `pm2 status` | Check server status |
+| `pm2 logs antigravity-mobile` | View live logs |
+| `pm2 restart antigravity-mobile` | Restart server |
 
-### 3. Auto-start on boot
+### Launch IDE with CDP
 
 ```bash
-pm2 startup launchd   # generates launchd plist
-pm2 save              # saves current process list
+# Required: open Antigravity IDE with remote debugging
+/Applications/Antigravity.app/Contents/MacOS/Electron --remote-debugging-port=9223
 ```
 
-### 4. Launch IDE with CDP
-
-Use the included script (kills old instances, launches with CDP on port 9223):
+Or use the included script:
 
 ```bash
 bash scripts/start-ide.sh
 ```
 
-Or add a shell alias for convenience:
-
-```bash
-echo 'alias aide="bash /path/to/antigravity-ide-mobile/scripts/start-ide.sh"' >> ~/.zshrc
-source ~/.zshrc
-# Then just run: aide
-```
-
-### 5. Remote Access via Tailscale
+### Remote Access via Tailscale
 
 If both your server machine and phone are on [Tailscale](https://tailscale.com/):
 
@@ -398,16 +415,6 @@ http://<TAILSCALE_IP>:3333
 ```
 
 No port forwarding or Cloudflare tunnel needed — encrypted P2P access from anywhere.
-
-### pm2 Useful Commands
-
-| Command | Description |
-|---------|-------------|
-| `pm2 status` | Check server status |
-| `pm2 logs antigravity-mobile` | View live logs |
-| `pm2 restart antigravity-mobile` | Restart server |
-| `pm2 stop antigravity-mobile` | Stop server |
-| `pm2 monit` | Dashboard view |
 
 ---
 
