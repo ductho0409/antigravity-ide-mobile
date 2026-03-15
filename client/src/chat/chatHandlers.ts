@@ -4,6 +4,28 @@
  */
 import { authFetch, getServerUrl } from '../hooks/useApi';
 
+// File types that can be rendered in the view endpoint
+const VIEW_EXTS = /\.(md|markdown|mdx|pdf|png|jpg|jpeg|gif|webp|svg|bmp|ico|ts|tsx|js|mjs|jsx|json|html|css|py|sh|yml|yaml|xml|txt|log|toml|rs|go|java|rb|php|swift|kt|c|h|cpp|sql)$/i;
+
+// Helper: get auth token from localStorage
+function getToken(): string {
+    try { return localStorage.getItem('authToken') || ''; } catch { return ''; }
+}
+
+// Helper: open file in a view tab (redirects preTab if provided, else opens new tab)
+function openFileInTab(filePath: string, preTab?: Window | null): void {
+    const serverUrl = getServerUrl();
+    const token = getToken();
+    const params = new URLSearchParams({ path: filePath });
+    if (token) params.set('token', token);
+    const url = `${serverUrl}/api/files/view?${params.toString()}`;
+    if (preTab && !preTab.closed) {
+        preTab.location.href = url; // redirect the pre-opened tab
+    } else {
+        location.href = url; // fallback: same tab
+    }
+}
+
 // ─── Types ──────────────────────────────────────────────────────────
 type ShowToastFn = (msg: string, type?: 'info' | 'success' | 'error') => void;
 type ViewFileDiffFn = (path: string, ext: string) => void;
@@ -35,14 +57,15 @@ async function getWorkspace(): Promise<string | null> {
 }
 
 /**
- * Bidirectional file open — opens on BOTH mobile viewer AND IDE
+ * Bidirectional file open
+ * For viewable files (md, pdf, images, etc.): opens in /api/files/view tab
+ * For code files: opens in FilesPanel CodeMirror editor + IDE
  */
-async function openFileBidirectional(filePath: string, deps: HandlerDeps): Promise<void> {
+async function openFileBidirectional(filePath: string, deps: HandlerDeps, preTab?: Window | null): Promise<void> {
     if (!filePath) return;
-    const ext = '.' + filePath.split('.').pop();
     let resolvedPath = filePath;
 
-    // Resolve non-absolute paths
+    // Resolve non-absolute paths — use find API to get the full real path
     if (!filePath.startsWith('/')) {
         const ws = await getWorkspace();
         if (ws) {
@@ -64,16 +87,23 @@ async function openFileBidirectional(filePath: string, deps: HandlerDeps): Promi
         }
     }
 
-    // Open on IDE (fire-and-forget)
-    authFetch('/api/cdp/open-file', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: resolvedPath, diff: true }),
-    }).catch(() => { /* silent */ });
+    const ext = '.' + (resolvedPath.split('.').pop()?.toLowerCase() || '');
+    const CODE_ONLY = /\.(ts|tsx|js|mjs|jsx|py|sh|rb|php|swift|kt|c|h|cpp|hpp|rs|go|java|vue|svelte|prisma|graphql)$/i;
 
-    // Open on mobile
-    deps.viewFileDiff?.(resolvedPath, ext);
+    if (CODE_ONLY.test(resolvedPath)) {
+        if (preTab && !preTab.closed) preTab.close(); // close blank tab for code files
+        authFetch('/api/cdp/open-file', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path: resolvedPath, diff: true }),
+        }).catch(() => { /* silent */ });
+        deps.viewFileDiff?.(resolvedPath, ext);
+        return;
+    }
+
+    openFileInTab(resolvedPath, preTab);
 }
+
 
 /**
  * Find file path from nearby DOM context for "Open" button handlers
@@ -209,6 +239,8 @@ export function attachFilePathHandlers(container: HTMLElement, deps: HandlerDeps
         if (htmlEl.getAttribute('data-file-handler')) return;
         if (htmlEl.closest('[data-file-handler]')) return;
         if (htmlEl.getAttribute('data-mobile-action')) return;
+        // Skip elements inside <a> tags — the anchor itself handles navigation
+        if (htmlEl.closest('a[href]')) return;
 
         const isFilePath = (text.includes('/') || text.includes('\\')) && FILE_EXT.test(text);
         const isFileName = !text.includes(' ') && FILE_EXT.test(text) && text.length < 80;
@@ -247,7 +279,8 @@ export function attachFilePathHandlers(container: HTMLElement, deps: HandlerDeps
         htmlEl.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            openFileBidirectional(fileName, deps);
+            const preTab = window.open('about:blank', '_blank', 'noopener');
+            openFileBidirectional(fileName, deps, preTab);
         });
     });
 
@@ -272,7 +305,118 @@ export function attachFilePathHandlers(container: HTMLElement, deps: HandlerDeps
         htmlEl.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            openFileBidirectional(fileName, deps);
+            const preTab = window.open('about:blank', '_blank', 'noopener');
+            openFileBidirectional(fileName, deps, preTab);
+        });
+    });
+}
+
+/**
+ * Intercept file:// links and viewable file paths in chat — open via /api/files/view tab
+ * This handles:
+ *  1. <a href="file:///path/to/file"> links (IDE renders these as clickable links)
+ *  2. Artifact paths mentioned as plain text (.md, .pdf, images)
+ *  3. PathsToReview artifact links from notify_user responses
+ */
+export function patchFileLinks(container: HTMLElement): void {
+    // 1. <a href="file://..."> links — convert to server view endpoint
+    container.querySelectorAll('a[href]').forEach((el) => {
+        const anchor = el as HTMLAnchorElement;
+        if (anchor.getAttribute('data-view-patched')) return;
+        const href = anchor.getAttribute('href') || '';
+
+        let filePath: string | null = null;
+        if (href.startsWith('file:///')) {
+            filePath = decodeURIComponent(href.replace('file://', ''));
+        } else if (href.startsWith('file://')) {
+            filePath = decodeURIComponent(href.replace('file://localhost', '').replace('file://', ''));
+        }
+
+        if (!filePath) return;
+        if (!VIEW_EXTS.test(filePath)) return;
+
+        anchor.setAttribute('data-view-patched', 'true');
+        anchor.setAttribute('data-original-href', href);
+        anchor.setAttribute('target', '_blank');
+        anchor.setAttribute('rel', 'noopener');
+        anchor.style.cursor = 'pointer';
+        anchor.style.color = 'var(--brand, #a78bfa)';
+
+        // Replace href with server view URL
+        anchor.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            openFileInTab(filePath!);
+        });
+    });
+
+    // 2. Artifact paths in tool result blocks (Analyzed / Edited / Created file:\/\/ paths)
+    container.querySelectorAll('span[draggable="true"]').forEach((el) => {
+        const htmlEl = el as HTMLElement;
+        if (htmlEl.getAttribute('data-view-patched')) return;
+
+        // Look for file path text in child spans
+        const pathSpan = htmlEl.querySelector('span.opacity-70, [class*="opacity-70"], span.break-all');
+        const rawText = (pathSpan?.textContent || htmlEl.textContent || '').trim().replace(/:$/, '');
+        if (!rawText || rawText.length > 300) return;
+
+        // Check if it looks like an absolute path to a viewable file
+        if (!rawText.startsWith('/') && !rawText.startsWith('~')) return;
+        if (!VIEW_EXTS.test(rawText)) return;
+
+        const filePath = rawText.replace(/^~/, /* home */ '/Users/' + (window as unknown as { __USERNAME__?: string }).__USERNAME__ || '~');
+
+        // Add a small "↗" view button next to the element
+        if (!htmlEl.querySelector('.mobile-view-btn')) {
+            const btn = document.createElement('button');
+            btn.className = 'mobile-view-btn';
+            btn.textContent = '↗';
+            btn.title = 'View in tab';
+            btn.style.cssText = 'margin-left:6px;padding:1px 5px;font-size:11px;background:rgba(167,139,250,0.2);color:#a78bfa;border:1px solid rgba(167,139,250,0.4);border-radius:4px;cursor:pointer;vertical-align:middle;line-height:1.4';
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                openFileInTab(filePath);
+            });
+            htmlEl.appendChild(btn);
+        }
+
+        htmlEl.setAttribute('data-view-patched', 'true');
+    });
+
+    // 3. /api/files/view?path=... links (relative OR absolute with any host)
+    //    IDE markdown renderer may resolve relative URLs to absolute using wrong host.
+    //    Fix: set the href directly to the correct URL, let native Safari handle the click.
+    container.querySelectorAll('a[href]').forEach((el) => {
+        const anchor = el as HTMLAnchorElement;
+        if (anchor.getAttribute('data-view-patched')) return;
+        const href = anchor.getAttribute('href') || '';
+        if (!href.includes('/api/files/view')) return;
+
+        // Extract path param and rebuild with correct server URL
+        let correctedUrl: string;
+        try {
+            const parsed = new URL(href, window.location.origin);
+            const pathParam = parsed.searchParams.get('path') || '';
+            const token = getToken() || '';
+            const p = new URLSearchParams({ path: pathParam });
+            if (token) p.set('token', token);
+            correctedUrl = `${getServerUrl()}/api/files/view?${p.toString()}`;
+        } catch {
+            correctedUrl = getServerUrl() + '/api/files/view' + (href.split('/api/files/view')[1] || '');
+        }
+
+        // Set href to correct server URL, open in new tab
+        anchor.href = correctedUrl;
+        anchor.target = '_blank';
+        anchor.rel = 'noopener';
+        anchor.style.color = 'var(--brand, #a78bfa)';
+        anchor.style.cursor = 'pointer';
+        anchor.style.fontWeight = 'bold'; // Visual indicator: link is active
+        anchor.setAttribute('data-view-patched', 'true');
+        console.warn('[AG] Section3 patched link:', correctedUrl);
+        anchor.addEventListener('click', () => {
+            console.warn('[AG] Section3 link clicked, navigating to:', correctedUrl);
         });
     });
 }
@@ -340,4 +484,7 @@ export function attachAllHandlers(container: HTMLElement, deps: HandlerDeps): vo
     attachInteractiveHandlers(container, deps);
     hookIdeCopyButtons(container, deps.showToast);
     attachFilePathHandlers(container, deps);
+    // Must run on document.body, not just the cascade container,
+    // because file links in AI text responses live outside the cascade
+    patchFileLinks(document.body);
 }
