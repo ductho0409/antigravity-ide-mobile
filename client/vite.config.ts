@@ -14,6 +14,23 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
         cleanupOutdatedCaches: true,
+        skipWaiting: true,
+        clientsClaim: true,
+        // CRITICAL: Do NOT intercept navigation to /api/* routes.
+        // Without this, browser navigation to /api/files/view?path=... returns
+        // index.html (SPA fallback) instead of the actual API response.
+        navigateFallbackDenylist: [/^\/api\//],
+        // Never cache API calls — always go to network
+        runtimeCaching: [
+          {
+            urlPattern: /\/api\/.*/,
+            handler: 'NetworkOnly',
+          },
+          {
+            urlPattern: /\/ws.*/,
+            handler: 'NetworkOnly',
+          },
+        ],
       },
       manifest: {
         name: 'Antigravity Control',

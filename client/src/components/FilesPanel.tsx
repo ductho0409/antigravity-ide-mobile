@@ -7,7 +7,7 @@ import { authFetch, getServerUrl } from '../hooks/useApi';
 import { escapeHtml, formatSize } from '../utils';
 import { useApp } from '../context/AppContext';
 import { useTranslation } from '../i18n';
-import { FolderOpen, Folder, FileText, FileCode, Image, Settings, ArrowUp, RefreshCw, ArrowLeft, X, Pencil, Monitor, Save, Search, Archive } from 'lucide-preact';
+import { FolderOpen, Folder, FileText, FileCode, Image, Settings, ArrowUp, RefreshCw, ArrowLeft, X, Pencil, Monitor, Save, Search, Archive, Download, ExternalLink } from 'lucide-preact';
 import { CodeEditor } from './CodeEditor';
 import { OrnamentWrapper } from './OrnamentWrapper';
 
@@ -62,6 +62,9 @@ type ViewMode = 'browser' | 'viewer' | 'editor' | 'image';
 
 // ─── Constants ──────────────────────────────────────────────────────
 const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.ico', '.bmp'];
+
+// Extensions that should be viewed via /api/files/view tab (rendered HTML/PDF)
+const VIEW_TAB_EXTENSIONS = ['.pdf', '.html', '.htm'];
 
 const LANG_MAP: Record<string, string> = {
     '.js': 'javascript', '.mjs': 'javascript', '.ts': 'typescript',
@@ -246,8 +249,18 @@ export function FilesPanel() {
 
     // ─── View file (text) ───────────────────────────────────────────
     const viewFile = useCallback(async (path: string, ext: string) => {
-        if (isImageFile(ext)) {
+        const lext = (ext || '').toLowerCase();
+
+        if (isImageFile(lext)) {
             await viewImageFile(path);
+            return;
+        }
+
+        // PDF / HTML: open in new browser tab via view endpoint
+        if (VIEW_TAB_EXTENSIONS.includes(lext)) {
+            const token = (window as unknown as Record<string, string>).__AG_TOKEN__ || '';
+            const url = `${getServerUrl()}/api/files/view?path=${encodeURIComponent(path)}${token ? `&token=${encodeURIComponent(token)}` : ''}`;
+            window.open(url, '_blank', 'noopener');
             return;
         }
 
@@ -280,8 +293,18 @@ export function FilesPanel() {
         cameFromRef.current = activePanel !== 'files' ? activePanel : null;
         setActivePanel('files');
 
-        if (isImageFile(ext)) {
+        const lext = (ext || '').toLowerCase();
+
+        if (isImageFile(lext)) {
             await viewImageFile(path);
+            return;
+        }
+
+        // PDF / HTML: open in new browser tab via view endpoint
+        if (VIEW_TAB_EXTENSIONS.includes(lext)) {
+            const token = (window as unknown as Record<string, string>).__AG_TOKEN__ || '';
+            const url = `${getServerUrl()}/api/files/view?path=${encodeURIComponent(path)}${token ? `&token=${encodeURIComponent(token)}` : ''}`;
+            window.open(url, '_blank', 'noopener');
             return;
         }
 
@@ -509,6 +532,30 @@ export function FilesPanel() {
             showToast('CDP error: ' + (err as Error).message, 'error');
         }
     }, [showToast]);
+
+    // ─── Download file ────────────────────────────────────────
+    const downloadFile = useCallback((filePath: string) => {
+        const token = (window as unknown as Record<string, unknown>).__authToken as string | undefined
+            || localStorage.getItem('authToken')
+            || '';
+        const url = `${getServerUrl()}/api/files/download?path=${encodeURIComponent(filePath)}${token ? `&token=${encodeURIComponent(token)}` : ''}`;
+        const a = document.createElement('a');
+        a.href = url;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        showToast('Downloading...', 'info');
+    }, [showToast]);
+
+    // ─── Open file in browser tab ─────────────────────────────
+    const openInBrowserTab = useCallback((filePath: string) => {
+        const token = (window as unknown as Record<string, unknown>).__authToken as string | undefined
+            || localStorage.getItem('authToken')
+            || '';
+        const url = `${getServerUrl()}/api/files/view?path=${encodeURIComponent(filePath)}${token ? `&token=${encodeURIComponent(token)}` : ''}`;
+        window.open(url, '_blank', 'noopener');
+    }, []);
 
     // ─── Editing ────────────────────────────────────────────────────
     const startEditing = useCallback(() => {
@@ -764,6 +811,26 @@ export function FilesPanel() {
                                 >
                                     <Monitor size={14} /> 
                                     {t('mobile.files.ide')}
+                                </button>
+                            )}
+                            {currentViewingFile && (
+                                <button
+                                    className="bg-[rgba(139,92,246,0.15)] border border-[rgba(139,92,246,0.3)] text-[#a78bfa] rounded-lg px-3 py-1.5 text-[11px] cursor-pointer font-bold flex items-center gap-1.5 transition-all hover:bg-[rgba(139,92,246,0.25)]"
+                                    title="Open in browser tab"
+                                    onClick={() => openInBrowserTab(currentViewingFile!)}
+                                >
+                                    <ExternalLink size={14} />
+                                    View
+                                </button>
+                            )}
+                            {currentViewingFile && (
+                                <button
+                                    className="bg-[rgba(234,179,8,0.15)] border border-[rgba(234,179,8,0.3)] text-[#fbbf24] rounded-lg px-3 py-1.5 text-[11px] cursor-pointer font-bold flex items-center gap-1.5 transition-all hover:bg-[rgba(234,179,8,0.25)]"
+                                    title="Download file"
+                                    onClick={() => downloadFile(currentViewingFile!)}
+                                >
+                                    <Download size={14} />
+                                    Save
                                 </button>
                             )}
                         </div>

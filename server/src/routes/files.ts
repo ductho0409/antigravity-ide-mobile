@@ -56,6 +56,39 @@ export function createFileRoutes(deps: FileRouteDeps): Router {
         return false;
     }
 
+    // Helper: quick find a file by name in workspace + brain directories (synchronous)
+    function quickFind(name: string, workspacePath: string): string | null {
+        const SKIP = new Set(['node_modules', '.git', '.next', 'dist', 'build', '.turbo', '.cache']);
+        const isRel = name.includes('/');
+        const norm = isRel ? '/' + name.replace(/^\//, '') : name;
+
+        function scan(dir: string, depth: number, maxDepth: number): string | null {
+            if (depth > maxDepth) return null;
+            try {
+                for (const entry of readdirSync(dir, { withFileTypes: true })) {
+                    if (entry.name.startsWith('.') && entry.isDirectory()) continue;
+                    if (SKIP.has(entry.name)) continue;
+                    const full = join(dir, entry.name);
+                    if (entry.isFile()) {
+                        if (isRel ? full.endsWith(norm) : entry.name === name) return full;
+                    } else if (entry.isDirectory()) {
+                        const found = scan(full, depth + 1, maxDepth);
+                        if (found) return found;
+                    }
+                }
+            } catch { /* skip */ }
+            return null;
+        }
+
+        // Search workspace
+        const wsResult = scan(workspacePath, 0, 8);
+        if (wsResult) return wsResult;
+
+        // Search brain dir
+        const brainDir = join(HOME_DIR, '.gemini', 'antigravity', 'brain');
+        return scan(brainDir, 0, 4);
+    }
+
     // ── Upload ────────────────────────────────────────────────────────
     router.post('/api/upload', upload.single('image'), async (req: Request, res: Response) => {
         try {
@@ -521,8 +554,19 @@ export function createFileRoutes(deps: FileRouteDeps): Router {
     router.get('/api/files/view', (req: Request, res: Response) => {
         if (!checkQueryAuth(req, res)) return;
         try {
-            const filePath = req.query.path as string;
-            if (!filePath) return res.status(400).send('Path required');
+            let filePath = req.query.path as string;
+            const nameParam = req.query.name as string;
+
+            // Auto-resolve: if `name` is provided (no path), find the file first
+            if (!filePath && nameParam) {
+                const found = quickFind(nameParam, getWorkspacePath());
+                if (found) {
+                    filePath = found;
+                } else {
+                    return res.status(404).send(`File not found: ${nameParam}`);
+                }
+            }
+            if (!filePath) return res.status(400).send('Path or name required');
 
             const resolvedPath = resolve(filePath);
             if (!isReadAllowed(resolvedPath)) {

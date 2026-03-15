@@ -12,18 +12,29 @@ function getToken(): string {
     try { return localStorage.getItem('authToken') || ''; } catch { return ''; }
 }
 
-// Helper: open file in a view tab (redirects preTab if provided, else opens new tab)
-function openFileInTab(filePath: string, preTab?: Window | null): void {
+// Helper: build a /api/files/view URL for a file
+function buildViewUrl(filePath: string): string {
     const serverUrl = getServerUrl();
     const token = getToken();
-    const params = new URLSearchParams({ path: filePath });
+    // Use `path` for absolute, `name` for relative (server auto-resolves)
+    const params = filePath.startsWith('/')
+        ? new URLSearchParams({ path: filePath })
+        : new URLSearchParams({ name: filePath });
     if (token) params.set('token', token);
-    const url = `${serverUrl}/api/files/view?${params.toString()}`;
-    if (preTab && !preTab.closed) {
-        preTab.location.href = url; // redirect the pre-opened tab
-    } else {
-        location.href = url; // fallback: same tab
-    }
+    return `${serverUrl}/api/files/view?${params.toString()}`;
+}
+
+// Helper: open a URL in a new tab using a temp <a> element (works on iOS Safari)
+// Must be called synchronously within user gesture context!
+function openInNewTab(url: string): void {
+    const a = document.createElement('a');
+    a.href = url;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
 }
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -56,52 +67,51 @@ async function getWorkspace(): Promise<string | null> {
     } catch (_) { return null; }
 }
 
+// Code-only extensions that should open in editor, not in view tab
+const CODE_ONLY = /\.(ts|tsx|js|mjs|jsx|py|sh|rb|php|swift|kt|c|h|cpp|hpp|rs|go|java|vue|svelte|prisma|graphql)$/i;
+
 /**
- * Bidirectional file open
- * For viewable files (md, pdf, images, etc.): opens in /api/files/view tab
+ * Bidirectional file open (SYNCHRONOUS for new tab — no async before tab open)
+ * For viewable files: opens in new tab via /api/files/view (server resolves name)
  * For code files: opens in FilesPanel CodeMirror editor + IDE
  */
-async function openFileBidirectional(filePath: string, deps: HandlerDeps, preTab?: Window | null): Promise<void> {
+function openFileBidirectional(filePath: string, deps: HandlerDeps): void {
     if (!filePath) return;
-    let resolvedPath = filePath;
 
-    // Resolve non-absolute paths — use find API to get the full real path
-    if (!filePath.startsWith('/')) {
-        const ws = await getWorkspace();
-        if (ws) {
-            if (filePath.includes('/')) {
-                resolvedPath = ws + '/' + filePath;
-            } else {
-                try {
-                    const res = await authFetch(`${getServerUrl()}/api/files/find?name=${encodeURIComponent(filePath)}`);
-                    const data = await res.json();
-                    if (data.results?.length > 0) {
-                        resolvedPath = data.results[0];
-                    } else {
+    // Code files → open in editor (same tab, no new tab needed)
+    if (CODE_ONLY.test(filePath)) {
+        // Async resolution is fine here — no tab to open
+        (async () => {
+            let resolvedPath = filePath;
+            if (!filePath.startsWith('/')) {
+                const ws = await getWorkspace();
+                if (ws) {
+                    if (filePath.includes('/')) {
                         resolvedPath = ws + '/' + filePath;
+                    } else {
+                        try {
+                            const res = await authFetch(`${getServerUrl()}/api/files/find?name=${encodeURIComponent(filePath)}`);
+                            const data = await res.json();
+                            resolvedPath = data.results?.[0] || ws + '/' + filePath;
+                        } catch { resolvedPath = ws + '/' + filePath; }
                     }
-                } catch (_) {
-                    resolvedPath = ws + '/' + filePath;
                 }
             }
-        }
-    }
-
-    const ext = '.' + (resolvedPath.split('.').pop()?.toLowerCase() || '');
-    const CODE_ONLY = /\.(ts|tsx|js|mjs|jsx|py|sh|rb|php|swift|kt|c|h|cpp|hpp|rs|go|java|vue|svelte|prisma|graphql)$/i;
-
-    if (CODE_ONLY.test(resolvedPath)) {
-        if (preTab && !preTab.closed) preTab.close(); // close blank tab for code files
-        authFetch('/api/cdp/open-file', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ path: resolvedPath, diff: true }),
-        }).catch(() => { /* silent */ });
-        deps.viewFileDiff?.(resolvedPath, ext);
+            const ext = '.' + (resolvedPath.split('.').pop()?.toLowerCase() || '');
+            authFetch('/api/cdp/open-file', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path: resolvedPath, diff: true }),
+            }).catch(() => { /* silent */ });
+            deps.viewFileDiff?.(resolvedPath, ext);
+        })();
         return;
     }
 
-    openFileInTab(resolvedPath, preTab);
+    // Viewable files → open in new tab SYNCHRONOUSLY (no async before open!)
+    // Server auto-resolves `name` param, so no client-side find needed
+    const url = buildViewUrl(filePath);
+    openInNewTab(url);
 }
 
 
@@ -279,8 +289,7 @@ export function attachFilePathHandlers(container: HTMLElement, deps: HandlerDeps
         htmlEl.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            const preTab = window.open('about:blank', '_blank', 'noopener');
-            openFileBidirectional(fileName, deps, preTab);
+            openFileBidirectional(fileName, deps);
         });
     });
 
@@ -305,8 +314,7 @@ export function attachFilePathHandlers(container: HTMLElement, deps: HandlerDeps
         htmlEl.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            const preTab = window.open('about:blank', '_blank', 'noopener');
-            openFileBidirectional(fileName, deps, preTab);
+            openFileBidirectional(fileName, deps);
         });
     });
 }
@@ -346,7 +354,7 @@ export function patchFileLinks(container: HTMLElement): void {
         anchor.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            openFileInTab(filePath!);
+            openInNewTab(buildViewUrl(filePath!));
         });
     });
 
@@ -376,7 +384,7 @@ export function patchFileLinks(container: HTMLElement): void {
             btn.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                openFileInTab(filePath);
+                openInNewTab(buildViewUrl(filePath));
             });
             htmlEl.appendChild(btn);
         }

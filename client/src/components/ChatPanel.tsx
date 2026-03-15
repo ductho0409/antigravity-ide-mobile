@@ -367,11 +367,14 @@ export function ChatPanel() {
         sendMessage();
     }, [sendMessage]);
 
-    // ─── Keyboard handler (Enter = newline, no auto-send) ────────────
-    const handleKeyDown = useCallback((_e: KeyboardEvent) => {
-        // Enter = newline (default textarea behavior)
-        // No auto-send — user must tap the Send button
-    }, []);
+    // ─── Keyboard handler (Enter = newline, Ctrl+Enter or Cmd+Enter = send) ──
+    const handleKeyDown = useCallback((e: KeyboardEvent) => {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+            e.preventDefault();
+            sendMessage();
+        }
+        // Plain Enter = newline (default textarea behavior)
+    }, [sendMessage]);
 
     // ─── Auto-resize textarea ────────────────────────────────────────
     const handleInput = useCallback(() => {

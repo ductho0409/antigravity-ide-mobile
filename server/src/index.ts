@@ -575,7 +575,9 @@ app.use(createFileRoutes({
     startWatching, stopWatching,
     getWorkspacePath: () => workspacePath,
     setWorkspacePath: (p: string) => { workspacePath = p; },
-    upload, UPLOADS_DIR
+    upload, UPLOADS_DIR,
+    authEnabled: () => authState.authEnabled,
+    validateSession,
 }));
 
 // Serve uploaded files
