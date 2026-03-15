@@ -72,15 +72,18 @@ const CODE_ONLY = /\.(ts|tsx|js|mjs|jsx|py|sh|rb|php|swift|kt|c|h|cpp|hpp|rs|go|
 
 /**
  * Bidirectional file open (SYNCHRONOUS for new tab — no async before tab open)
- * For viewable files: opens in new tab via /api/files/view (server resolves name)
- * For code files: opens in FilesPanel CodeMirror editor + IDE
+ * ALL files open in new tab via /api/files/view (server resolves name)
+ * Code files additionally trigger CDP open-file in IDE (fire-and-forget)
  */
 function openFileBidirectional(filePath: string, deps: HandlerDeps): void {
     if (!filePath) return;
 
-    // Code files → open in editor (same tab, no new tab needed)
+    // ALWAYS open in new tab first (synchronous — works on iOS Safari)
+    const url = buildViewUrl(filePath);
+    openInNewTab(url);
+
+    // For code files, also open in IDE via CDP (async, fire-and-forget)
     if (CODE_ONLY.test(filePath)) {
-        // Async resolution is fine here — no tab to open
         (async () => {
             let resolvedPath = filePath;
             if (!filePath.startsWith('/')) {
@@ -105,13 +108,7 @@ function openFileBidirectional(filePath: string, deps: HandlerDeps): void {
             }).catch(() => { /* silent */ });
             deps.viewFileDiff?.(resolvedPath, ext);
         })();
-        return;
     }
-
-    // Viewable files → open in new tab SYNCHRONOUSLY (no async before open!)
-    // Server auto-resolves `name` param, so no client-side find needed
-    const url = buildViewUrl(filePath);
-    openInNewTab(url);
 }
 
 
