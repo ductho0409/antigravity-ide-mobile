@@ -380,24 +380,31 @@ export function ChatPanel() {
     const handlePaste = useCallback(async () => {
         const el = chatInputRef.current;
         if (!el) return;
-        try {
-            let text = '';
-            if (navigator.clipboard?.readText) {
-                text = await navigator.clipboard.readText();
+
+        // Try Clipboard API first (works on HTTPS + modern browsers)
+        if (navigator.clipboard?.readText) {
+            try {
+                const text = await navigator.clipboard.readText();
+                if (text) {
+                    const start = el.selectionStart ?? el.value.length;
+                    const end = el.selectionEnd ?? el.value.length;
+                    el.value = el.value.slice(0, start) + text + el.value.slice(end);
+                    el.selectionStart = el.selectionEnd = start + text.length;
+                    el.focus();
+                    el.style.height = 'auto';
+                    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+                    return;
+                }
+            } catch (_) {
+                // Permission denied or HTTP → fall through to native paste hint
             }
-            if (!text) return;
-            // Insert at cursor position
-            const start = el.selectionStart ?? el.value.length;
-            const end = el.selectionEnd ?? el.value.length;
-            el.value = el.value.slice(0, start) + text + el.value.slice(end);
-            el.selectionStart = el.selectionEnd = start + text.length;
-            el.focus();
-            // Trigger auto-resize
-            el.style.height = 'auto';
-            el.style.height = Math.min(el.scrollHeight, 120) + 'px';
-        } catch (_) {
-            showToast('Không thể đọc clipboard', 'error');
         }
+
+        // Fallback: focus textarea + show hint for native long-press paste
+        el.focus();
+        // Select all existing text so user can paste over or position cursor
+        el.setSelectionRange(el.value.length, el.value.length);
+        showToast('📋 Giữ tay → Paste để dán', 'info');
     }, [showToast]);
 
     // ─── Auto-resize textarea ────────────────────────────────────────
