@@ -12,7 +12,7 @@ import { useChatPolling } from '../hooks/useChatPolling';
 import { useWindows } from '../hooks/useWindows';
 import { attachAllHandlers } from '../chat/chatHandlers';
 import { ChatHistoryModal } from './ChatHistoryModal';
-import { Clock, Plus, Monitor, FolderOpen, ArrowLeft, Check, RefreshCw, Send, X, Terminal, Maximize2, Minimize2 } from 'lucide-preact';
+import { Clock, Plus, Monitor, FolderOpen, ArrowLeft, Check, RefreshCw, Send, X, Terminal, Maximize2, Minimize2, Clipboard } from 'lucide-preact';
 import { useTranslation } from '../i18n';
 import { OrnamentWrapper } from './OrnamentWrapper';
 
@@ -376,6 +376,30 @@ export function ChatPanel() {
         // Plain Enter = newline (default textarea behavior)
     }, [sendMessage]);
 
+    // ─── Paste from clipboard ─────────────────────────────────────────
+    const handlePaste = useCallback(async () => {
+        const el = chatInputRef.current;
+        if (!el) return;
+        try {
+            let text = '';
+            if (navigator.clipboard?.readText) {
+                text = await navigator.clipboard.readText();
+            }
+            if (!text) return;
+            // Insert at cursor position
+            const start = el.selectionStart ?? el.value.length;
+            const end = el.selectionEnd ?? el.value.length;
+            el.value = el.value.slice(0, start) + text + el.value.slice(end);
+            el.selectionStart = el.selectionEnd = start + text.length;
+            el.focus();
+            // Trigger auto-resize
+            el.style.height = 'auto';
+            el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+        } catch (_) {
+            showToast('Không thể đọc clipboard', 'error');
+        }
+    }, [showToast]);
+
     // ─── Auto-resize textarea ────────────────────────────────────────
     const handleInput = useCallback(() => {
         const el = chatInputRef.current;
@@ -656,6 +680,13 @@ export function ChatPanel() {
                                 title={batchMode ? t('mobile.chat.batchModeOn') : t('mobile.chat.singleMode')}
                             >
                                 <Plus size={18} class={batchMode ? 'rotate-45 transition-transform' : 'transition-transform'} />
+                            </button>
+                            <button
+                                onClick={handlePaste}
+                                class="p-3 text-[var(--text-muted)] hover:text-[var(--brand)] transition-all active:scale-90"
+                                title="Dán từ clipboard"
+                            >
+                                <Clipboard size={16} />
                             </button>
                             <textarea
                                 ref={chatInputRef}
