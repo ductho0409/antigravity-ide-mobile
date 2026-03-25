@@ -14,6 +14,7 @@ import express from 'express';
 import compression from 'compression';
 import { networkInterfaces } from 'os';
 import { createServer } from 'http';
+import { createServer as createHttpsServer } from 'https';
 import { WebSocketServer, WebSocket } from 'ws';
 import { join, dirname, extname, basename } from 'path';
 import { fileURLToPath } from 'url';
@@ -123,6 +124,8 @@ function trackMetric(type: string): void {
 // Configuration
 // ============================================================================
 const HTTP_PORT = parseInt(process.env['PORT'] || '3333', 10);
+const HTTPS_PORT = parseInt(process.env['HTTPS_PORT'] || '3334', 10);
+const CERT_DIR = process.env['CERT_DIR'] || join(PROJECT_ROOT, 'certs');
 const DATA_DIR = join(PROJECT_ROOT, 'data');
 const UPLOADS_DIR = join(PROJECT_ROOT, 'uploads');
 const MESSAGES_FILE = join(DATA_DIR, 'messages.json');
@@ -479,7 +482,28 @@ function registerTelegramCallbacks(): void {
 // ============================================================================
 const app = express();
 const httpServer = createServer(app);
-const wss = new WebSocketServer({ server: httpServer });
+
+// ── HTTPS Server (Tailscale cert) ────────────────────────────────────────────
+const certFile = join(CERT_DIR, 'macmini.crt');
+const keyFile  = join(CERT_DIR, 'macmini.key');
+let httpsServer: ReturnType<typeof createHttpsServer> | null = null;
+if (existsSync(certFile) && existsSync(keyFile)) {
+    try {
+        httpsServer = createHttpsServer({
+            cert: readFileSync(certFile),
+            key:  readFileSync(keyFile),
+        }, app);
+    } catch (e) {
+        console.log('⚠️ Failed to load TLS cert:', (e as Error).message);
+    }
+}
+
+// WebSocket attaches to HTTPS if available, otherwise HTTP
+const wss = new WebSocketServer({ server: httpsServer ?? httpServer });
+// Also attach WS to HTTP server if running both
+if (httpsServer) {
+    new WebSocketServer({ server: httpServer });
+}
 
 app.use(express.json({ limit: '50mb' }));
 app.use(compression());
@@ -1143,6 +1167,13 @@ async function startServer(): Promise<void> {
     }
 
 
+    // Start HTTPS server if cert was loaded
+    if (httpsServer) {
+        httpsServer.listen(HTTPS_PORT, '0.0.0.0', () => {
+            console.log(`🔒 HTTPS listening on port ${HTTPS_PORT}`);
+        });
+    }
+
     httpServer.listen(HTTP_PORT, '0.0.0.0', () => {
         const tgEnabled = Config.getConfig('telegram.enabled');
         const tunnelStatus = Tunnel.getStatus();
@@ -1151,11 +1182,13 @@ async function startServer(): Promise<void> {
             : tunnelStatus.status === 'starting'
                 ? '🚇 Starting...'
                 : '❌ Disabled';
+        const httpsLine = httpsServer ? `https://macmini.tail445515.ts.net:${HTTPS_PORT}` : 'Not configured';
         console.log(`
 ╔════════════════════════════════════════════════════════╗
 ║       📱 Antigravity Mobile Bridge (TypeScript)        ║
 ╠════════════════════════════════════════════════════════╣
-║  Mobile UI:    http://localhost:${HTTP_PORT}                   ║
+║  HTTP:         http://localhost:${HTTP_PORT}                   ║
+║  HTTPS:        ${httpsLine.padEnd(43)}║
 ║  Auth:         ${authState.authEnabled ? '🔐 ENABLED' : '🔓 Disabled'}                            ║
 ║  Telegram:     ${tgEnabled ? '🤖 ENABLED' : '❌ Disabled'}                            ║
 ║  Tunnel:       ${tunnelLine.padEnd(39)}║
