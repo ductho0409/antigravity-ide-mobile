@@ -30,6 +30,7 @@ import { createCdpRoutes } from './routes/cdp.js';
 import { createFileRoutes } from './routes/files.js';
 import { createMessageRoutes } from './routes/messages.js';
 import { createGitRoutes } from './routes/git.js';
+import { createTestRoutes } from './routes/test.js';
 
 // CDP + Services
 import * as CDP from './cdp/index.js';
@@ -591,6 +592,12 @@ if (existsSync('/usr/share/antigravity')) {
 // ── Git Routes ──────────────────────────────────────────────────────────
 app.use(createGitRoutes({
     getWorkspacePath: () => workspacePath,
+}));
+// ── Test / Feature Verification Routes ──────────────────────────────────
+app.use(createTestRoutes({
+    getWorkspacePath: () => workspacePath,
+    authEnabled: () => authState.authEnabled,
+    validateSession: (token) => !authState.authEnabled || validateSession(token),
 }));
 // ── Message + Supervisor Routes ─────────────────────────────────────────
 app.use(createMessageRoutes({
